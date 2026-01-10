@@ -334,7 +334,7 @@ async function parseVendorFile(filePath: string): Promise<any[]> {
       const results: any[] = [];
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', (data) => results.push(data))
+        .on('data', (data: any) => results.push(data))
         .on('end', () => resolve(results))
         .on('error', reject);
     });

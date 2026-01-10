@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { UserModel } from '../models/User';
 
 export class AuthService {
@@ -14,16 +14,19 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role_name || '',
-      },
-      process.env.JWT_SECRET || 'default_secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const secret = process.env.JWT_SECRET || 'default_secret';
+    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
+    
+    const payload = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role_name || '',
+    };
+    
+    const token = jwt.sign(payload, secret, {
+      expiresIn: expiresIn,
+    } as SignOptions);
 
     return {
       token,
