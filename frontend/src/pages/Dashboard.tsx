@@ -17,6 +17,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
   const isSalesRep = user?.role === 'sales_rep';
+  const isAccountant = user?.role === 'accountant';
 
   useEffect(() => {
     loadStats();
@@ -52,32 +53,55 @@ const Dashboard = () => {
     return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>;
   }
 
-  const cards = [
-    {
-      title: 'Total Sales',
-      value: `₦${stats?.total_sales.toFixed(2) || '0.00'}`,
-      icon: DollarSign,
-      color: 'var(--primary)',
-    },
-    {
-      title: 'Total Orders',
-      value: stats?.total_orders || 0,
-      icon: ShoppingCart,
-      color: 'var(--accent)',
-    },
-    {
-      title: 'Today Sales',
-      value: `₦${stats?.today_sales.toFixed(2) || '0.00'}`,
-      icon: TrendingUp,
-      color: 'var(--success)',
-    },
-    {
-      title: 'Low Stock Items',
-      value: stats?.low_stock_items || 0,
-      icon: AlertTriangle,
-      color: 'var(--warning)',
-    },
-  ];
+  // For accountants, prioritize Total Sales and make it more prominent
+  const cards = isAccountant
+    ? [
+        {
+          title: 'Total Sales Amount',
+          value: `₦${stats?.total_sales.toFixed(2) || '0.00'}`,
+          icon: DollarSign,
+          color: '#dc2626',
+          isHighlight: true,
+        },
+        {
+          title: 'Today Sales',
+          value: `₦${stats?.today_sales.toFixed(2) || '0.00'}`,
+          icon: TrendingUp,
+          color: 'var(--success)',
+        },
+        {
+          title: 'Total Orders',
+          value: stats?.total_orders || 0,
+          icon: ShoppingCart,
+          color: 'var(--accent)',
+        },
+      ]
+    : [
+        {
+          title: 'Total Sales',
+          value: `₦${stats?.total_sales.toFixed(2) || '0.00'}`,
+          icon: DollarSign,
+          color: 'var(--primary)',
+        },
+        {
+          title: 'Total Orders',
+          value: stats?.total_orders || 0,
+          icon: ShoppingCart,
+          color: 'var(--accent)',
+        },
+        {
+          title: 'Today Sales',
+          value: `₦${stats?.today_sales.toFixed(2) || '0.00'}`,
+          icon: TrendingUp,
+          color: 'var(--success)',
+        },
+        {
+          title: 'Low Stock Items',
+          value: stats?.low_stock_items || 0,
+          icon: AlertTriangle,
+          color: 'var(--warning)',
+        },
+      ];
 
   return (
     <div>
@@ -86,37 +110,47 @@ const Dashboard = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: isAccountant
+            ? 'repeat(auto-fit, minmax(300px, 1fr))'
+            : 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '1.5rem',
           marginBottom: '2rem',
         }}
       >
-        {cards.map((card) => {
+        {cards.map((card: any) => {
           const Icon = card.icon;
+          const isHighlight = card.isHighlight;
           return (
             <div
               key={card.title}
               style={{
-                background: 'var(--surface)',
-                padding: '1.5rem',
+                background: isHighlight ? `linear-gradient(135deg, ${card.color}15 0%, ${card.color}05 100%)` : 'var(--surface)',
+                padding: isHighlight ? '2rem' : '1.5rem',
                 borderRadius: '0.75rem',
-                boxShadow: 'var(--shadow)',
-                border: '1px solid var(--border)',
+                boxShadow: isHighlight ? `0 4px 6px -1px ${card.color}30` : 'var(--shadow)',
+                border: isHighlight ? `2px solid ${card.color}` : '1px solid var(--border)',
+                transform: isHighlight ? 'scale(1.02)' : 'none',
+                transition: 'all 0.3s ease',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>
                     {card.title}
                   </p>
-                  <p style={{ fontSize: '2rem', fontWeight: '700', color: card.color }}>
+                  <p style={{ fontSize: isHighlight ? '2.5rem' : '2rem', fontWeight: '700', color: card.color }}>
                     {card.value}
                   </p>
+                  {isHighlight && isAccountant && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                      Total revenue from all paid orders
+                    </p>
+                  )}
                 </div>
                 <div
                   style={{
-                    width: '48px',
-                    height: '48px',
+                    width: isHighlight ? '64px' : '48px',
+                    height: isHighlight ? '64px' : '48px',
                     borderRadius: '0.5rem',
                     background: `${card.color}20`,
                     display: 'flex',
@@ -124,7 +158,7 @@ const Dashboard = () => {
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon size={24} color={card.color} />
+                  <Icon size={isHighlight ? 32 : 24} color={card.color} />
                 </div>
               </div>
             </div>

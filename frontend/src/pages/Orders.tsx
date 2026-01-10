@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { orderService, Order } from '../services/orderService';
 import { productService, Product } from '../services/productService';
 import { authService } from '../services/authService';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X } from 'lucide-react';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -14,23 +14,61 @@ const Orders = () => {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
   const user = authService.getCurrentUser();
   const canCreate = user?.role === 'sales_rep' || user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAccountant = user?.role === 'accountant';
+  const isSalesRep = user?.role === 'sales_rep';
 
   useEffect(() => {
     loadOrders();
     if (canCreate) {
       loadProducts();
     }
-  }, []);
+  }, [statusFilter, startDate, endDate]);
 
   const loadOrders = async () => {
     try {
-      // Sales reps only see pending and submitted orders
-      const data = await orderService.getAll();
-      const filteredData = user?.role === 'sales_rep' 
-        ? data.filter((order) => order.status === 'pending' || order.status === 'submitted')
-        : data;
+      setLoading(true);
+      const filters: any = {};
+      
+      if (statusFilter !== 'all') {
+        filters.status = statusFilter;
+      }
+      
+      if (startDate) {
+        filters.startDate = startDate;
+      }
+      
+      if (endDate) {
+        filters.endDate = endDate;
+      }
+      
+      const data = await orderService.getAll(filters);
+      
+      // Role-based filtering
+      let filteredData = data;
+      
+      if (isSalesRep) {
+        // Sales reps only see their own pending and submitted orders
+        filteredData = data.filter(
+          (order) => 
+            (order.status === 'pending' || order.status === 'submitted') && 
+            order.sales_rep_id === user?.id
+        );
+      } else if (isAccountant) {
+        // Accountants see submitted and paid orders
+        filteredData = data.filter(
+          (order) => order.status === 'submitted' || order.status === 'paid'
+        );
+      }
+      // Admin/Manager see all orders (no additional filtering needed)
+      
       setOrders(filteredData);
     } catch (error) {
       console.error('Failed to load orders:', error);
@@ -46,6 +84,15 @@ const Orders = () => {
     } catch (error) {
       console.error('Failed to load products:', error);
     }
+  };
+
+  // Calculate stats from orders
+  const stats = {
+    total: orders.length,
+    pending: orders.filter((o) => o.status === 'pending').length,
+    paid: orders.filter((o) => o.status === 'paid').length,
+    submitted: orders.filter((o) => o.status === 'submitted').length,
+    totalRevenue: orders.filter((o) => o.status === 'paid').reduce((sum, o) => sum + Number(o.total), 0),
   };
 
   const addToCart = (productId: number) => {
@@ -108,9 +155,17 @@ const Orders = () => {
         return { bg: '#dbeafe', color: '#1e40af' };
       case 'pending':
         return { bg: '#fef3c7', color: '#92400e' };
-      default:
+      case 'cancelled':
         return { bg: '#fee2e2', color: '#991b1b' };
+      default:
+        return { bg: '#f3f4f6', color: '#374151' };
     }
+  };
+
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setStartDate('');
+    setEndDate('');
   };
 
   if (loading) {
@@ -121,28 +176,211 @@ const Orders = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: '700' }}>Orders</h1>
-        {canCreate && (
-          <button
-            onClick={() => setShowModal(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              background: 'var(--primary)',
-              color: 'white',
-              borderRadius: '0.5rem',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '500',
-            }}
-          >
-            <Plus size={18} />
-            Create Order
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {(isAdmin || isAccountant) && (
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: showFilters ? '#dc2626' : 'var(--surface)',
+                color: showFilters ? 'white' : 'var(--text)',
+                border: '1px solid var(--border)',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              <Filter size={18} />
+              Filters
+            </button>
+          )}
+          {canCreate && (
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: '#dc2626',
+                color: 'white',
+                borderRadius: '0.5rem',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              <Plus size={18} />
+              Create Order
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+        <div
+          style={{
+            background: 'var(--surface)',
+            padding: '1.5rem',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--shadow)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+              Total Orders
+            </span>
+            <ShoppingCart size={20} color="#6b7280" />
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text)' }}>{stats.total}</div>
+        </div>
+
+        <div
+          style={{
+            background: 'var(--surface)',
+            padding: '1.5rem',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--shadow)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+              Pending
+            </span>
+            <Clock size={20} color="#f59e0b" />
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: '700', color: '#f59e0b' }}>{stats.pending}</div>
+          {stats.submitted > 0 && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+              ({stats.submitted} submitted)
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            background: 'var(--surface)',
+            padding: '1.5rem',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--shadow)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+              Paid
+            </span>
+            <DollarSign size={20} color="#10b981" />
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: '700', color: '#10b981' }}>{stats.paid}</div>
+          {stats.totalRevenue > 0 && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+              ₦{stats.totalRevenue.toFixed(2)}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Filters Panel */}
+      {showFilters && (isAdmin || isAccountant) && (
+        <div
+          style={{
+            background: 'var(--surface)',
+            padding: '1.5rem',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--shadow)',
+            border: '1px solid var(--border)',
+            marginBottom: '2rem',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Filter Orders</h3>
+            <button
+              onClick={clearFilters}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              <X size={16} />
+              Clear All
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="submitted">Submitted</option>
+                <option value="paid">Paid</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Orders Table */}
       <div
         style={{
           background: 'var(--surface)',
@@ -152,93 +390,137 @@ const Orders = () => {
           overflow: 'hidden',
         }}
       >
-        {orders.map((order) => {
-          const statusStyle = getStatusColor(order.status);
-          return (
-            <div key={order.id} style={{ borderBottom: '1px solid var(--border)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                    {order.order_number}
-                  </h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    Customer: {order.customer_name || 'Walk-in Customer'}
-                  </p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    Created: {new Date(order.created_at).toLocaleString()}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span
-                    style={{
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.875rem',
-                      background: statusStyle.bg,
-                      color: statusStyle.color,
-                      fontWeight: '500',
-                    }}
-                  >
-                    {order.status.toUpperCase()}
-                  </span>
-                  <p style={{ marginTop: '0.5rem', fontSize: '1.25rem', fontWeight: '700' }}>
-                    ₦{order.total.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <p style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Items:</p>
-                {order.items.map((item) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                    <span>
-                      {item.product_name} x {item.quantity}
-                    </span>
-                    <span>₦{item.subtotal?.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {order.status === 'pending' && canCreate && order.sales_rep_id === user?.id && (
-                <button
-                  onClick={() => {
-                    if (confirm('Submit this order for payment confirmation?')) {
-                      handleSubmitOrder(order.id);
-                    }
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    background: '#dc2626',
-                    color: 'white',
-                    borderRadius: '0.5rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                  }}
-                >
-                  <Check size={16} />
-                  Submit for Payment
-                </button>
-              )}
-              {order.status === 'submitted' && user?.role === 'sales_rep' && (
-                <div style={{ padding: '0.75rem', background: '#dbeafe', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#1e40af' }}>
-                  Order submitted. Waiting for accountant confirmation.
-                </div>
-              )}
-            </div>
-          );
-        })}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Order #
+                </th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Customer
+                </th>
+                {isAdmin && (
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                    Sales Rep
+                  </th>
+                )}
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Items
+                </th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Status
+                </th>
+                <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Total
+                </th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Date
+                </th>
+                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => {
+                const statusStyle = getStatusColor(order.status);
+                return (
+                  <tr key={order.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--background)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>
+                      {order.order_number}
+                    </td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
+                      {order.customer_name || 'Walk-in'}
+                      {order.customer_phone && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                          {order.customer_phone}
+                        </div>
+                      )}
+                    </td>
+                    {isAdmin && (
+                      <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {order.sales_rep_name || 'N/A'}
+                      </td>
+                    )}
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <span
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          background: statusStyle.bg,
+                          color: statusStyle.color,
+                          fontWeight: '600',
+                          display: 'inline-block',
+                        }}
+                      >
+                        {order.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>
+                      ₦{Number(order.total).toFixed(2)}
+                    </td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {new Date(order.created_at).toLocaleDateString()}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                        {new Date(order.created_at).toLocaleTimeString()}
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      {order.status === 'pending' && canCreate && order.sales_rep_id === user?.id && (
+                        <button
+                          onClick={() => {
+                            if (confirm('Submit this order for payment confirmation?')) {
+                              handleSubmitOrder(order.id);
+                            }
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1rem',
+                            background: '#dc2626',
+                            color: 'white',
+                            borderRadius: '0.5rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: '500',
+                          }}
+                        >
+                          <Check size={14} />
+                          Submit
+                        </button>
+                      )}
+                      {order.status === 'submitted' && isSalesRep && (
+                        <span style={{ fontSize: '0.75rem', color: '#1e40af' }}>
+                          Awaiting Payment
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        
         {orders.length === 0 && (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No orders found
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <ShoppingCart size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+            <p style={{ fontSize: '1rem', fontWeight: '500' }}>No orders found</p>
+            <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {canCreate ? 'Create your first order to get started' : 'No orders match your filters'}
+            </p>
           </div>
         )}
       </div>
 
+      {/* Create Order Modal */}
       {showModal && (
         <div
           style={{
@@ -282,6 +564,7 @@ const Orders = () => {
                     border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                   }}
+                  placeholder="Optional"
                 />
               </div>
               <div>
@@ -298,6 +581,7 @@ const Orders = () => {
                     border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                   }}
+                  placeholder="Optional"
                 />
               </div>
               <div>
@@ -314,6 +598,7 @@ const Orders = () => {
                     border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                   }}
+                  placeholder="Optional"
                 />
               </div>
             </div>
@@ -323,7 +608,7 @@ const Orders = () => {
                 Add Products
               </label>
               <div style={{ display: 'grid', gap: '0.5rem', maxHeight: '200px', overflow: 'auto', marginBottom: '1rem' }}>
-                {products.map((product) => (
+                {products.filter((p) => p.quantity > 0).map((product) => (
                   <div
                     key={product.id}
                     style={{
@@ -338,7 +623,7 @@ const Orders = () => {
                     <div>
                       <div style={{ fontWeight: '500' }}>{product.product_name}</div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                        ₦{product.price.toFixed(2)} | Stock: {product.quantity}
+                        ₦{Number(product.price).toFixed(2)} | Stock: {product.quantity}
                       </div>
                     </div>
                     <button
@@ -346,7 +631,7 @@ const Orders = () => {
                       disabled={product.quantity === 0}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: product.quantity === 0 ? 'var(--text-secondary)' : 'var(--primary)',
+                        background: product.quantity === 0 ? 'var(--text-secondary)' : '#dc2626',
                         color: 'white',
                         borderRadius: '0.5rem',
                         border: 'none',
@@ -382,7 +667,7 @@ const Orders = () => {
                       <div>
                         <div style={{ fontWeight: '500' }}>{product?.product_name}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                          ₦{product?.price.toFixed(2)} each
+                          ₦{product ? Number(product.price).toFixed(2) : '0.00'} each
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -390,7 +675,7 @@ const Orders = () => {
                           onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)}
                           style={{
                             padding: '0.25rem 0.5rem',
-                            background: 'var(--error)',
+                            background: '#dc2626',
                             color: 'white',
                             borderRadius: '0.25rem',
                             border: 'none',
@@ -405,7 +690,7 @@ const Orders = () => {
                           disabled={product && item.quantity >= product.quantity}
                           style={{
                             padding: '0.25rem 0.5rem',
-                            background: product && item.quantity >= product.quantity ? 'var(--text-secondary)' : 'var(--success)',
+                            background: product && item.quantity >= product.quantity ? 'var(--text-secondary)' : '#10b981',
                             color: 'white',
                             borderRadius: '0.25rem',
                             border: 'none',
@@ -418,6 +703,14 @@ const Orders = () => {
                     </div>
                   );
                 })}
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700' }}>
+                    Total: ₦{cart.reduce((sum, item) => {
+                      const product = products.find((p) => p.id === item.product_id);
+                      return sum + (product ? Number(product.price) * item.quantity : 0);
+                    }, 0).toFixed(2)}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -436,6 +729,7 @@ const Orders = () => {
                   borderRadius: '0.5rem',
                   resize: 'vertical',
                 }}
+                placeholder="Optional notes about this order"
               />
             </div>
 
@@ -460,7 +754,7 @@ const Orders = () => {
                 disabled={cart.length === 0}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  background: cart.length === 0 ? 'var(--text-secondary)' : 'var(--primary)',
+                  background: cart.length === 0 ? 'var(--text-secondary)' : '#dc2626',
                   color: 'white',
                   border: 'none',
                   borderRadius: '0.5rem',
@@ -478,4 +772,3 @@ const Orders = () => {
 };
 
 export default Orders;
-
