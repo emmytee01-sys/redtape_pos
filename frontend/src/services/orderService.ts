@@ -57,5 +57,20 @@ export const orderService = {
     const response = await api.post<Order>(`/orders/${id}/submit`);
     return response.data;
   },
+
+  update: async (id: number, order: {
+    customer_name?: string;
+    customer_email?: string;
+    customer_phone?: string;
+    items?: OrderItem[];
+    notes?: string;
+  }): Promise<Order> => {
+    const response = await api.put<Order>(`/orders/${id}`, order);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/orders/${id}`);
+  },
 };
 

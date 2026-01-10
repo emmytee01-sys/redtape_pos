@@ -85,12 +85,23 @@ const Payments = () => {
     }
   };
 
+  const getBackendUrl = () => {
+    // In production, you might want to use an env variable
+    // For now, use the same origin since API is proxied
+    if (import.meta.env.DEV) {
+      return 'http://localhost:3000';
+    }
+    // In production, use the actual backend URL or same origin
+    return window.location.origin.replace(/:\d+$/, ':3000') || 'http://localhost:3000';
+  };
+
   const handleDownloadReceipt = (filePath: string | null) => {
     if (!filePath) {
       alert('Receipt not available');
       return;
     }
-    window.open(`http://localhost:3000/${filePath}`, '_blank');
+    const receiptUrl = filePath.startsWith('http') ? filePath : `${getBackendUrl()}/${filePath}`;
+    window.open(receiptUrl, '_blank');
   };
 
   const getStatusColor = (status: string) => {
@@ -310,7 +321,10 @@ const Payments = () => {
                     onClick={() => {
                       paymentService.getReceipt(payment.id).then((receipt) => {
                         if (receipt.file_path) {
-                          window.open(`http://localhost:3000/${receipt.file_path}`, '_blank');
+                          const receiptUrl = receipt.file_path.startsWith('http') 
+                            ? receipt.file_path 
+                            : `${getBackendUrl()}/${receipt.file_path}`;
+                          window.open(receiptUrl, '_blank');
                         }
                       });
                     }}

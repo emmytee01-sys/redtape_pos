@@ -193,5 +193,100 @@ export class OrderModel {
     await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
     return true;
   }
+
+  static async updateOrder(
+    id: number,
+    orderData: {
+      customer_name?: string;
+      customer_email?: string;
+      customer_phone?: string;
+      notes?: string;
+      subtotal?: number;
+      tax?: number;
+      total?: number;
+    }
+  ): Promise<boolean> {
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (orderData.customer_name !== undefined) {
+      updates.push('customer_name = ?');
+      params.push(orderData.customer_name || null);
+    }
+    if (orderData.customer_email !== undefined) {
+      updates.push('customer_email = ?');
+      params.push(orderData.customer_email || null);
+    }
+    if (orderData.customer_phone !== undefined) {
+      updates.push('customer_phone = ?');
+      params.push(orderData.customer_phone || null);
+    }
+    if (orderData.notes !== undefined) {
+      updates.push('notes = ?');
+      params.push(orderData.notes || null);
+    }
+    if (orderData.subtotal !== undefined) {
+      updates.push('subtotal = ?');
+      params.push(orderData.subtotal);
+    }
+    if (orderData.tax !== undefined) {
+      updates.push('tax = ?');
+      params.push(orderData.tax);
+    }
+    if (orderData.total !== undefined) {
+      updates.push('total = ?');
+      params.push(orderData.total);
+    }
+
+    if (updates.length === 0) return true;
+
+    params.push(id);
+    await pool.execute(`UPDATE orders SET ${updates.join(', ')} WHERE id = ?`, params);
+    return true;
+  }
+
+  static async deleteItem(itemId: number): Promise<boolean> {
+    await pool.execute('DELETE FROM order_items WHERE id = ?', [itemId]);
+    return true;
+  }
+
+  static async updateItem(
+    itemId: number,
+    itemData: {
+      quantity?: number;
+      unit_price?: number;
+      subtotal?: number;
+    }
+  ): Promise<boolean> {
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (itemData.quantity !== undefined) {
+      updates.push('quantity = ?');
+      params.push(itemData.quantity);
+    }
+    if (itemData.unit_price !== undefined) {
+      updates.push('unit_price = ?');
+      params.push(itemData.unit_price);
+    }
+    if (itemData.subtotal !== undefined) {
+      updates.push('subtotal = ?');
+      params.push(itemData.subtotal);
+    }
+
+    if (updates.length === 0) return true;
+
+    params.push(itemId);
+    await pool.execute(`UPDATE order_items SET ${updates.join(', ')} WHERE id = ?`, params);
+    return true;
+  }
+
+  static async deleteOrder(id: number): Promise<boolean> {
+    // Delete order items first
+    await pool.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
+    // Then delete the order
+    await pool.execute('DELETE FROM orders WHERE id = ?', [id]);
+    return true;
+  }
 }
 

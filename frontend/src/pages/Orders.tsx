@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { orderService, Order } from '../services/orderService';
 import { productService, Product } from '../services/productService';
 import { authService } from '../services/authService';
-import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X } from 'lucide-react';
+import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye } from 'lucide-react';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [cart, setCart] = useState<Array<{ product_id: number; quantity: number }>>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -55,10 +58,10 @@ const Orders = () => {
       let filteredData = data;
       
       if (isSalesRep) {
-        // Sales reps only see their own pending and submitted orders
+        // Sales reps see their own orders (pending, submitted, and paid - paid orders are view-only)
         filteredData = data.filter(
           (order) => 
-            (order.status === 'pending' || order.status === 'submitted') && 
+            (order.status === 'pending' || order.status === 'submitted' || order.status === 'paid') && 
             order.sales_rep_id === user?.id
         );
       } else if (isAccountant) {
@@ -145,6 +148,74 @@ const Orders = () => {
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to submit order');
     }
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setCustomerName(order.customer_name || '');
+    setCustomerEmail(order.customer_email || '');
+    setCustomerPhone(order.customer_phone || '');
+    setNotes(order.notes || '');
+    setCart(order.items.map(item => ({
+      product_id: item.product_id!,
+      quantity: item.quantity,
+    })));
+    setShowEditModal(true);
+  };
+
+  const handleUpdateOrder = async () => {
+    if (cart.length === 0) {
+      alert('Cart is empty');
+      return;
+    }
+
+    if (!selectedOrder) return;
+
+    try {
+      await orderService.update(selectedOrder.id, {
+        customer_name: customerName || undefined,
+        customer_email: customerEmail || undefined,
+        customer_phone: customerPhone || undefined,
+        items: cart,
+        notes: notes || undefined,
+      });
+      setShowEditModal(false);
+      setSelectedOrder(null);
+      setCart([]);
+      setCustomerName('');
+      setCustomerEmail('');
+      setCustomerPhone('');
+      setNotes('');
+      loadOrders();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to update order');
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: number) => {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await orderService.delete(orderId);
+      loadOrders();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to delete order');
+    }
+  };
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setShowViewModal(true);
+  };
+
+  const canEditOrder = (order: Order) => {
+    return isSalesRep && order.status === 'pending' && order.sales_rep_id === user?.id;
+  };
+
+  const canDeleteOrder = (order: Order) => {
+    return isSalesRep && order.status === 'pending' && order.sales_rep_id === user?.id;
   };
 
   const getStatusColor = (status: string) => {
@@ -471,19 +542,16 @@ const Orders = () => {
                       </div>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      {order.status === 'pending' && canCreate && order.sales_rep_id === user?.id && (
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                        {/* View button - always available */}
                         <button
-                          onClick={() => {
-                            if (confirm('Submit this order for payment confirmation?')) {
-                              handleSubmitOrder(order.id);
-                            }
-                          }}
+                          onClick={() => handleViewOrder(order)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1rem',
-                            background: '#dc2626',
+                            gap: '0.25rem',
+                            padding: '0.5rem 0.75rem',
+                            background: '#2563eb',
                             color: 'white',
                             borderRadius: '0.5rem',
                             border: 'none',
@@ -491,16 +559,99 @@ const Orders = () => {
                             fontSize: '0.75rem',
                             fontWeight: '500',
                           }}
+                          title="View Order Details"
                         >
-                          <Check size={14} />
-                          Submit
+                          <Eye size={14} />
                         </button>
-                      )}
-                      {order.status === 'submitted' && isSalesRep && (
-                        <span style={{ fontSize: '0.75rem', color: '#1e40af' }}>
-                          Awaiting Payment
-                        </span>
-                      )}
+
+                        {/* Edit button - only for pending orders owned by sales rep */}
+                        {canEditOrder(order) && (
+                          <button
+                            onClick={() => handleEditOrder(order)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.5rem 0.75rem',
+                              background: '#f59e0b',
+                              color: 'white',
+                              borderRadius: '0.5rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                            }}
+                            title="Edit Order"
+                          >
+                            <Edit size={14} />
+                          </button>
+                        )}
+
+                        {/* Delete button - only for pending orders owned by sales rep */}
+                        {canDeleteOrder(order) && (
+                          <button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.5rem 0.75rem',
+                              background: '#ef4444',
+                              color: 'white',
+                              borderRadius: '0.5rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                            }}
+                            title="Delete Order"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+
+                        {/* Submit button - only for pending orders owned by sales rep */}
+                        {order.status === 'pending' && canCreate && order.sales_rep_id === user?.id && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Submit this order for payment confirmation?')) {
+                                handleSubmitOrder(order.id);
+                              }
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.5rem 0.75rem',
+                              background: '#dc2626',
+                              color: 'white',
+                              borderRadius: '0.5rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                            }}
+                            title="Submit for Payment"
+                          >
+                            <Check size={14} />
+                            Submit
+                          </button>
+                        )}
+
+                        {/* Status indicator for submitted orders */}
+                        {order.status === 'submitted' && isSalesRep && (
+                          <span style={{ fontSize: '0.75rem', color: '#1e40af', padding: '0.5rem' }}>
+                            Awaiting Payment
+                          </span>
+                        )}
+
+                        {/* Status indicator for paid orders */}
+                        {order.status === 'paid' && (
+                          <span style={{ fontSize: '0.75rem', color: '#10b981', padding: '0.5rem' }}>
+                            Paid
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -762,6 +913,429 @@ const Orders = () => {
                 }}
               >
                 Create Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {showEditModal && selectedOrder && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setShowEditModal(false);
+            setSelectedOrder(null);
+            setCart([]);
+            setCustomerName('');
+            setCustomerEmail('');
+            setCustomerPhone('');
+            setNotes('');
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              padding: '2rem',
+              borderRadius: '0.75rem',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
+              Edit Order - {selectedOrder.order_number}
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                  }}
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                  }}
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                  }}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                Add Products
+              </label>
+              <div style={{ display: 'grid', gap: '0.5rem', maxHeight: '200px', overflow: 'auto', marginBottom: '1rem' }}>
+                {products.filter((p) => p.quantity > 0).map((product) => (
+                  <div
+                    key={product.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      background: 'var(--background)',
+                      borderRadius: '0.5rem',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '500' }}>{product.product_name}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        ₦{Number(product.price).toFixed(2)} | Stock: {product.quantity}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => addToCart(product.id)}
+                      disabled={product.quantity === 0}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: product.quantity === 0 ? 'var(--text-secondary)' : '#dc2626',
+                        color: 'white',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        cursor: product.quantity === 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {cart.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>Cart</h3>
+                {cart.map((item) => {
+                  const product = products.find((p) => p.id === item.product_id);
+                  return (
+                    <div
+                      key={item.product_id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0.75rem',
+                        background: 'var(--background)',
+                        borderRadius: '0.5rem',
+                        marginBottom: '0.5rem',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '500' }}>{product?.product_name}</div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                          ₦{product ? Number(product.price).toFixed(2) : '0.00'} each
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            background: '#dc2626',
+                            color: 'white',
+                            borderRadius: '0.25rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          -
+                        </button>
+                        <span style={{ minWidth: '2rem', textAlign: 'center' }}>{item.quantity}</span>
+                        <button
+                          onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}
+                          disabled={product && item.quantity >= product.quantity}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            background: product && item.quantity >= product.quantity ? 'var(--text-secondary)' : '#10b981',
+                            color: 'white',
+                            borderRadius: '0.25rem',
+                            border: 'none',
+                            cursor: product && item.quantity >= product.quantity ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700' }}>
+                    Total: ₦{cart.reduce((sum, item) => {
+                      const product = products.find((p) => p.id === item.product_id);
+                      return sum + (product ? Number(product.price) * item.quantity : 0);
+                    }, 0).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                Notes
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  resize: 'vertical',
+                }}
+                placeholder="Optional notes about this order"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedOrder(null);
+                  setCart([]);
+                  setCustomerName('');
+                  setCustomerEmail('');
+                  setCustomerPhone('');
+                  setNotes('');
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'var(--background)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateOrder}
+                disabled={cart.length === 0}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: cart.length === 0 ? 'var(--text-secondary)' : '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Update Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Order Modal */}
+      {showViewModal && selectedOrder && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setShowViewModal(false);
+            setSelectedOrder(null);
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              padding: '2rem',
+              borderRadius: '0.75rem',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
+              Order Details - {selectedOrder.order_number}
+            </h2>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                    Customer Name
+                  </p>
+                  <p style={{ fontWeight: '500' }}>{selectedOrder.customer_name || 'Walk-in Customer'}</p>
+                </div>
+                {selectedOrder.customer_phone && (
+                  <div>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      Phone
+                    </p>
+                    <p style={{ fontWeight: '500' }}>{selectedOrder.customer_phone}</p>
+                  </div>
+                )}
+                {selectedOrder.customer_email && (
+                  <div>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      Email
+                    </p>
+                    <p style={{ fontWeight: '500' }}>{selectedOrder.customer_email}</p>
+                  </div>
+                )}
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                    Status
+                  </p>
+                  <span
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      background: getStatusColor(selectedOrder.status).bg,
+                      color: getStatusColor(selectedOrder.status).color,
+                      fontWeight: '600',
+                      display: 'inline-block',
+                    }}
+                  >
+                    {selectedOrder.status.toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                    Date
+                  </p>
+                  <p style={{ fontWeight: '500' }}>{new Date(selectedOrder.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>Order Items</h3>
+              <div style={{ background: 'var(--background)', borderRadius: '0.5rem', padding: '1rem' }}>
+                {selectedOrder.items.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem 0',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '500' }}>{item.product_name}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {item.quantity} x ₦{item.unit_price ? Number(item.unit_price).toFixed(2) : '0.00'}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: '600' }}>₦{item.subtotal ? Number(item.subtotal).toFixed(2) : '0.00'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '2px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span>Subtotal:</span>
+                <span style={{ fontWeight: '500' }}>₦{Number(selectedOrder.subtotal).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span>Tax:</span>
+                <span style={{ fontWeight: '500' }}>₦{Number(selectedOrder.tax).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: '700', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+                <span>Total:</span>
+                <span>₦{Number(selectedOrder.total).toFixed(2)}</span>
+              </div>
+            </div>
+
+            {selectedOrder.notes && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  Notes
+                </p>
+                <p style={{ padding: '1rem', background: 'var(--background)', borderRadius: '0.5rem' }}>
+                  {selectedOrder.notes}
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedOrder(null);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Close
               </button>
             </div>
           </div>
