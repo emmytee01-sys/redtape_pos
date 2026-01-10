@@ -2469,7 +2469,7 @@ const VendorsTab = () => {
   const [vendorFile, setVendorFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedVendors, setSelectedVendors] = useState<number[]>([]);
-  const [invoices] = useState<VendorInvoice[]>([]);
+  const [_invoices, setInvoices] = useState<VendorInvoice[]>([]);
   const [vendorForm, setVendorForm] = useState({
     vendor_name: '',
     contact_person: '',

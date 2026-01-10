@@ -17,8 +17,22 @@ dotenv.config();
 const app: Application = express();
 
 // Middleware
+// Parse CORS_ORIGIN - support comma-separated origins
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const corsOrigins = corsOrigin.split(',').map(origin => origin.trim());
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (corsOrigins.includes(origin) || corsOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());

@@ -57,7 +57,7 @@ const Payments = () => {
       });
 
       // Then confirm it
-      const result = await paymentService.confirm(payment.id);
+      await paymentService.confirm(payment.id);
       alert('Payment confirmed! Receipt generated.');
       await loadPayments();
       await loadSubmittedOrders();
@@ -74,7 +74,7 @@ const Payments = () => {
     if (!confirm('Confirm this payment?')) return;
 
     try {
-      const result = await paymentService.confirm(paymentId);
+      await paymentService.confirm(paymentId);
       alert('Payment confirmed! Receipt generated.');
       await loadPayments();
       if (isAccountant) {
@@ -86,13 +86,12 @@ const Payments = () => {
   };
 
   const getBackendUrl = () => {
-    // In production, you might want to use an env variable
-    // For now, use the same origin since API is proxied
+    // In development, use localhost
     if (import.meta.env.DEV) {
       return 'http://localhost:3000';
     }
-    // In production, use the actual backend URL or same origin
-    return window.location.origin.replace(/:\d+$/, ':3000') || 'http://localhost:3000';
+    // In production, use the actual backend URL from environment variable or default
+    return import.meta.env.VITE_BACKEND_URL || 'http://98.92.181.124:3000';
   };
 
   const handleDownloadReceipt = (filePath: string | null) => {
@@ -100,7 +99,18 @@ const Payments = () => {
       alert('Receipt not available');
       return;
     }
-    const receiptUrl = filePath.startsWith('http') ? filePath : `${getBackendUrl()}/${filePath}`;
+    // Handle both absolute paths (legacy) and relative paths
+    let receiptUrl: string;
+    if (filePath.startsWith('http')) {
+      receiptUrl = filePath;
+    } else if (filePath.startsWith('/')) {
+      // Absolute path from old receipts - extract just the filename
+      const filename = filePath.split('/').pop() || '';
+      receiptUrl = `${getBackendUrl()}/receipts/${filename}`;
+    } else {
+      // Relative path (new format: receipts/filename.pdf)
+      receiptUrl = `${getBackendUrl()}/${filePath}`;
+    }
     window.open(receiptUrl, '_blank');
   };
 
@@ -169,7 +179,7 @@ const Payments = () => {
                       PENDING
                     </span>
                     <p style={{ marginTop: '0.5rem', fontSize: '1.25rem', fontWeight: '700' }}>
-                      ₦{order.total.toFixed(2)}
+                      ₦{Number(order.total).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -181,7 +191,7 @@ const Payments = () => {
                       <span>
                         {item.product_name} x {item.quantity}
                       </span>
-                      <span>₦{item.subtotal?.toFixed(2)}</span>
+                      <span>₦{item.subtotal ? Number(item.subtotal).toFixed(2) : '0.00'}</span>
                     </div>
                   ))}
                 </div>
@@ -241,7 +251,7 @@ const Payments = () => {
                     Customer: {payment.customer_name || 'N/A'}
                   </p>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    Payment Method: {payment.payment_method === 'card' ? 'POS' : payment.payment_method.toUpperCase()}
+                    Payment Method: {payment.payment_method === 'pos' ? 'POS' : payment.payment_method.toUpperCase()}
                   </p>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                     Created: {new Date(payment.created_at).toLocaleString()}
@@ -266,7 +276,7 @@ const Payments = () => {
                     {payment.payment_status.toUpperCase()}
                   </span>
                   <p style={{ marginTop: '0.5rem', fontSize: '1.25rem', fontWeight: '700' }}>
-                    ₦{payment.amount.toFixed(2)}
+                    ₦{Number(payment.amount).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -321,9 +331,17 @@ const Payments = () => {
                     onClick={() => {
                       paymentService.getReceipt(payment.id).then((receipt) => {
                         if (receipt.file_path) {
-                          const receiptUrl = receipt.file_path.startsWith('http') 
-                            ? receipt.file_path 
-                            : `${getBackendUrl()}/${receipt.file_path}`;
+                          let receiptUrl: string;
+                          if (receipt.file_path.startsWith('http')) {
+                            receiptUrl = receipt.file_path;
+                          } else if (receipt.file_path.startsWith('/')) {
+                            // Absolute path from old receipts - extract just the filename
+                            const filename = receipt.file_path.split('/').pop() || '';
+                            receiptUrl = `${getBackendUrl()}/receipts/${filename}`;
+                          } else {
+                            // Relative path (new format: receipts/filename.pdf)
+                            receiptUrl = `${getBackendUrl()}/${receipt.file_path}`;
+                          }
                           window.open(receiptUrl, '_blank');
                         }
                       });
@@ -399,7 +417,7 @@ const Payments = () => {
                 Order: {selectedOrder.order_number}
               </p>
               <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#dc2626' }}>
-                Amount: ₦{selectedOrder.total.toFixed(2)}
+                Amount: ₦{Number(selectedOrder.total).toFixed(2)}
               </p>
             </div>
 

@@ -162,7 +162,9 @@ export class ReceiptService {
       doc.on('end', resolve);
     });
 
-    return filePath;
+    // Return relative path for storage in database
+    // The static file server serves from /receipts, so we return just the filename
+    return `receipts/${receiptNumber}.pdf`;
   }
 }
 

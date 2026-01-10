@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { settingsService, AccountNumber, SystemSettings } from '../services/settingsService';
-import { Settings as SettingsIcon, Plus, Edit, Trash2, Save, Upload, X, Building2, CreditCard, FileText, Image } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, Upload, X, CreditCard, FileText, Image } from 'lucide-react';
 
 const Settings = () => {
   const [accountNumbers, setAccountNumbers] = useState<AccountNumber[]>([]);
