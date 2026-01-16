@@ -91,7 +91,7 @@ const Payments = () => {
       return 'http://localhost:3000';
     }
     // In production, use the actual backend URL from environment variable or default
-    return import.meta.env.VITE_BACKEND_URL || 'http://98.92.181.124:3000';
+    return import.meta.env.VITE_BACKEND_URL || 'https://98.92.181.124';
   };
 
   const handleDownloadReceipt = (filePath: string | null) => {
