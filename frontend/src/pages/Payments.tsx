@@ -12,55 +12,42 @@ const Payments = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | 'bank_transfer' | 'other'>('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
+
   const user = authService.getCurrentUser();
-  const canConfirm = user?.role === 'accountant' || user?.role === 'admin';
   const isAccountant = user?.role === 'accountant' || user?.role === 'admin';
 
   useEffect(() => {
-    if (isAccountant) {
-      loadSubmittedOrders();
-      loadPayments();
-    } else {
-    loadPayments();
-    }
+    loadData();
   }, []);
 
-  const loadPayments = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const data = await paymentService.getAll();
-      setPayments(data);
-    } catch (error) {
-      console.error('Failed to load payments:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const paymentsData = await paymentService.getAll();
+      setPayments(paymentsData);
 
-  const loadSubmittedOrders = async () => {
-    try {
-      const data = await orderService.getAll({ status: 'submitted' });
-      setOrders(data);
-      setLoading(false);
+      if (isAccountant) {
+        const ordersData = await orderService.getAll({ status: 'submitted' });
+        setOrders(ordersData);
+      }
     } catch (error) {
-      console.error('Failed to load submitted orders:', error);
+      console.error('Failed to load payment data:', error);
+    } finally {
       setLoading(false);
     }
   };
 
   const handleCreateAndConfirmPayment = async (order: Order) => {
     try {
-      // Create payment first
       const payment = await paymentService.create({
         order_id: order.id,
         payment_method: paymentMethod,
         notes: paymentNotes,
       });
 
-      // Then confirm it
       await paymentService.confirm(payment.id);
       alert('Payment confirmed! Receipt generated.');
-      await loadPayments();
-      await loadSubmittedOrders();
+      await loadData();
       setShowPaymentModal(false);
       setSelectedOrder(null);
       setPaymentMethod('cash');
@@ -70,28 +57,9 @@ const Payments = () => {
     }
   };
 
-  const handleConfirmPayment = async (paymentId: number) => {
-    if (!confirm('Confirm this payment?')) return;
-
-    try {
-      await paymentService.confirm(paymentId);
-      alert('Payment confirmed! Receipt generated.');
-      await loadPayments();
-      if (isAccountant) {
-        await loadSubmittedOrders();
-      }
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to confirm payment');
-    }
-  };
-
   const getBackendUrl = () => {
-    // In development, use localhost
-    if (import.meta.env.DEV) {
-      return 'http://localhost:3000';
-    }
-    // In production, use the actual backend URL from environment variable or default
-    return import.meta.env.VITE_BACKEND_URL || 'https://98.92.181.124';
+    if (import.meta.env.DEV) return 'http://localhost:3000';
+    return import.meta.env.VITE_BACKEND_URL || 'https://redtapepos.com.ng';
   };
 
   const handleDownloadReceipt = (filePath: string | null) => {
@@ -99,30 +67,16 @@ const Payments = () => {
       alert('Receipt not available');
       return;
     }
-    // Handle both absolute paths (legacy) and relative paths
     let receiptUrl: string;
     if (filePath.startsWith('http')) {
       receiptUrl = filePath;
     } else if (filePath.startsWith('/')) {
-      // Absolute path from old receipts - extract just the filename
       const filename = filePath.split('/').pop() || '';
       receiptUrl = `${getBackendUrl()}/receipts/${filename}`;
     } else {
-      // Relative path (new format: receipts/filename.pdf)
       receiptUrl = `${getBackendUrl()}/${filePath}`;
     }
     window.open(receiptUrl, '_blank');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return { bg: '#d1fae5', color: '#065f46' };
-      case 'pending':
-        return { bg: '#fef3c7', color: '#92400e' };
-      default:
-        return { bg: '#fee2e2', color: '#991b1b' };
-    }
   };
 
   if (loading) {
@@ -135,308 +89,150 @@ const Payments = () => {
         {isAccountant ? 'Payment Confirmation' : 'Payments'}
       </h1>
 
-      {/* Submitted Orders for Accountant */}
+      {/* Submitted Orders (Pending) */}
       {isAccountant && orders.length > 0 && (
-        <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>Pending Payment Confirmation</h2>
-          <div
-            style={{
-              background: 'var(--surface)',
-              borderRadius: '0.75rem',
-              boxShadow: 'var(--shadow)',
-              border: '1px solid var(--border)',
-              overflow: 'hidden',
-            }}
-          >
-            {orders.map((order) => (
-              <div key={order.id} style={{ borderBottom: '1px solid var(--border)', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                      {order.order_number}
-                    </h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                      Customer: {order.customer_name || 'Walk-in Customer'}
-                    </p>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                      Sales Rep: {order.sales_rep_name || 'N/A'}
-                    </p>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                      Created: {new Date(order.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span
-                      style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.875rem',
-                        background: '#fef3c7',
-                        color: '#92400e',
-                        fontWeight: '500',
-                      }}
-                    >
-                      PENDING
-                    </span>
-                    <p style={{ marginTop: '0.5rem', fontSize: '1.25rem', fontWeight: '700' }}>
-                      ₦{Number(order.total).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <p style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Items:</p>
-                  {order.items.map((item) => (
-                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                      <span>
-                        {item.product_name} x {item.quantity}
-                      </span>
-                      <span>₦{item.subtotal ? Number(item.subtotal).toFixed(2) : '0.00'}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setShowPaymentModal(true);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    background: '#dc2626',
-                    color: 'white',
-                    borderRadius: '0.5rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                  }}
-                >
-                  <Check size={18} />
-                  Confirm Payment
-                </button>
-              </div>
-            ))}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
+            Pending Payment Confirmation
+          </h2>
+          <div style={{ background: 'var(--surface)', borderRadius: '0.75rem', boxShadow: 'var(--shadow)', border: '1px solid var(--border)', overflow: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Order #</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Customer</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Sales Rep</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Date</th>
+                  <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Amount</th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{order.order_number}</td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{order.customer_name || 'Walk-in Customer'}</td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>{order.sales_rep_name || 'N/A'}</td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>{new Date(order.created_at).toLocaleString()}</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '700' }}>₦{Number(order.total).toFixed(2)}</td>
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <button
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowPaymentModal(true);
+                        }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', background: '#dc2626', color: 'white', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}
+                      >
+                        <Check size={14} />
+                        Confirm
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* Confirmed Payments */}
       <div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
-          {isAccountant ? 'Confirmed Payments' : 'Payments'}
+        <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
+          {isAccountant ? 'Confirmed Payments' : 'Recent Payments'}
         </h2>
-      <div
-        style={{
-          background: 'var(--surface)',
-          borderRadius: '0.75rem',
-          boxShadow: 'var(--shadow)',
-          border: '1px solid var(--border)',
-          overflow: 'hidden',
-        }}
-      >
-        {payments.map((payment) => {
-          const statusStyle = getStatusColor(payment.payment_status);
-          return (
-            <div key={payment.id} style={{ borderBottom: '1px solid var(--border)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                    Order: {payment.order_number}
-                  </h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    Customer: {payment.customer_name || 'N/A'}
-                  </p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    Payment Method: {payment.payment_method === 'pos' ? 'POS' : payment.payment_method.toUpperCase()}
-                  </p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    Created: {new Date(payment.created_at).toLocaleString()}
-                  </p>
-                  {payment.confirmed_at && (
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                      Confirmed: {new Date(payment.confirmed_at).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span
-                    style={{
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.875rem',
-                      background: statusStyle.bg,
-                      color: statusStyle.color,
-                      fontWeight: '500',
-                    }}
-                  >
-                    {payment.payment_status.toUpperCase()}
-                  </span>
-                  <p style={{ marginTop: '0.5rem', fontSize: '1.25rem', fontWeight: '700' }}>
-                    ₦{Number(payment.amount).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {payment.payment_status === 'pending' && canConfirm && (
-                <button
-                  onClick={() => handleConfirmPayment(payment.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    background: 'var(--accent)',
-                    color: 'white',
-                    borderRadius: '0.5rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  <Check size={16} />
-                  Confirm Payment
-                </button>
-              )}
-
-              {payment.payment_status === 'confirmed' && (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  onClick={() => {
-                    paymentService.getReceipt(payment.id).then((receipt) => {
-                      handleDownloadReceipt(receipt.file_path);
-                    });
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                      background: '#2563eb',
-                    color: 'white',
-                    borderRadius: '0.5rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                      fontWeight: '500',
-                  }}
-                >
-                  <Download size={16} />
-                  Download Receipt
-                </button>
-                  <button
-                    onClick={() => {
-                      paymentService.getReceipt(payment.id).then((receipt) => {
-                        if (receipt.file_path) {
-                          let receiptUrl: string;
-                          if (receipt.file_path.startsWith('http')) {
-                            receiptUrl = receipt.file_path;
-                          } else if (receipt.file_path.startsWith('/')) {
-                            // Absolute path from old receipts - extract just the filename
-                            const filename = receipt.file_path.split('/').pop() || '';
-                            receiptUrl = `${getBackendUrl()}/receipts/${filename}`;
-                          } else {
-                            // Relative path (new format: receipts/filename.pdf)
-                            receiptUrl = `${getBackendUrl()}/${receipt.file_path}`;
+        <div style={{ background: 'var(--surface)', borderRadius: '0.75rem', boxShadow: 'var(--shadow)', border: '1px solid var(--border)', overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '2px solid var(--border)' }}>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Order #</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Customer</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Method</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Date Confirmed</th>
+                <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Amount</th>
+                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Receipts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((payment) => (
+                <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{payment.order_number}</td>
+                  <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{payment.customer_name || 'N/A'}</td>
+                  <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
+                    <span style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: '600', color: '#4b5563' }}>
+                      {payment.payment_method === 'pos' ? 'POS' : payment.payment_method?.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    {payment.confirmed_at ? new Date(payment.confirmed_at).toLocaleString() : new Date(payment.created_at).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '700' }}>₦{Number(payment.amount).toFixed(2)}</td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                      <button
+                        onClick={async () => {
+                          const receipt = await paymentService.getReceipt(payment.id);
+                          handleDownloadReceipt(receipt.file_path);
+                        }}
+                        style={{ padding: '0.375rem', background: '#eff6ff', color: '#2563eb', borderRadius: '0.375rem', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                        title="Download Receipt"
+                      >
+                        <Download size={16} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const receipt = await paymentService.getReceipt(payment.id);
+                          if (receipt.file_path) {
+                            let receiptUrl: string;
+                            if (receipt.file_path.startsWith('http')) {
+                              receiptUrl = receipt.file_path;
+                            } else if (receipt.file_path.startsWith('/')) {
+                              const filename = receipt.file_path.split('/').pop() || '';
+                              receiptUrl = `${getBackendUrl()}/receipts/${filename}`;
+                            } else {
+                              receiptUrl = `${getBackendUrl()}/${receipt.file_path}`;
+                            }
+                            window.open(receiptUrl, '_blank');
                           }
-                          window.open(receiptUrl, '_blank');
-                        }
-                      });
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      background: '#10b981',
-                      color: 'white',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                    }}
-                  >
-                    <Printer size={16} />
-                    Print Receipt
-                  </button>
-                </div>
-              )}
+                        }}
+                        style={{ padding: '0.375rem', background: '#ecfdf5', color: '#10b981', borderRadius: '0.375rem', border: '1px solid #a7f3d0', cursor: 'pointer' }}
+                        title="Print Receipt"
+                      >
+                        <Printer size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {payments.length === 0 && (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              No payments found
             </div>
-          );
-        })}
-        {payments.length === 0 && (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            {isAccountant ? 'No confirmed payments found' : 'No payments found'}
-          </div>
-        )}
-        {isAccountant && orders.length === 0 && payments.length === 0 && !loading && (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No pending orders or payments found
-          </div>
-        )}
+          )}
+        </div>
       </div>
-      </div>
+
+      {isAccountant && orders.length === 0 && payments.length === 0 && (
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          No pending orders or confirmed payments found
+        </div>
+      )}
 
       {/* Payment Confirmation Modal */}
       {showPaymentModal && selectedOrder && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={() => {
-            setShowPaymentModal(false);
-            setSelectedOrder(null);
-            setPaymentMethod('cash');
-            setPaymentNotes('');
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--surface)',
-              padding: '2rem',
-              borderRadius: '0.75rem',
-              maxWidth: '500px',
-              width: '90%',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { setShowPaymentModal(false); setSelectedOrder(null); }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '0.75rem', maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Confirm Payment</h2>
-            
-            <div style={{ marginBottom: '1rem' }}>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                Order: {selectedOrder.order_number}
-              </p>
-              <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#dc2626' }}>
-                Amount: ₦{Number(selectedOrder.total).toFixed(2)}
-              </p>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Order: {selectedOrder.order_number}</p>
+              <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#dc2626' }}>Amount: ₦{Number(selectedOrder.total).toFixed(2)}</p>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
-                Payment Method *
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as any)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  background: 'white',
-                }}
-              >
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Payment Method *</label>
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', background: 'white' }}>
                 <option value="cash">Cash</option>
                 <option value="pos">POS</option>
                 <option value="bank_transfer">Bank Transfer</option>
@@ -445,61 +241,14 @@ const Payments = () => {
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
-                Notes (Optional)
-              </label>
-              <textarea
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  resize: 'vertical',
-                }}
-                placeholder="Add any notes about this payment"
-              />
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Notes (Optional)</label>
+              <textarea value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} rows={3} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', resize: 'vertical' }} placeholder="Add any notes about this payment" />
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setSelectedOrder(null);
-                  setPaymentMethod('cash');
-                  setPaymentNotes('');
-                }}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: 'var(--background)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleCreateAndConfirmPayment(selectedOrder)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
-                <Check size={18} />
-                Confirm Payment
+              <button onClick={() => { setShowPaymentModal(false); setSelectedOrder(null); }} style={{ padding: '0.75rem 1.5rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>Cancel</button>
+              <button onClick={() => handleCreateAndConfirmPayment(selectedOrder)} style={{ padding: '0.75rem 1.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Check size={18} /> Confirm Payment
               </button>
             </div>
           </div>
@@ -510,4 +259,3 @@ const Payments = () => {
 };
 
 export default Payments;
-

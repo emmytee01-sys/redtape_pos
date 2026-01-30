@@ -56,52 +56,52 @@ const Dashboard = () => {
   // For accountants, prioritize Total Sales and make it more prominent
   const cards = isAccountant
     ? [
-        {
-          title: 'Total Sales Amount',
-          value: `₦${stats?.total_sales.toFixed(2) || '0.00'}`,
-          icon: DollarSign,
-          color: '#dc2626',
-          isHighlight: true,
-        },
-        {
-          title: 'Today Sales',
-          value: `₦${stats?.today_sales.toFixed(2) || '0.00'}`,
-          icon: TrendingUp,
-          color: 'var(--success)',
-        },
-        {
-          title: 'Total Orders',
-          value: stats?.total_orders || 0,
-          icon: ShoppingCart,
-          color: 'var(--accent)',
-        },
-      ]
+      {
+        title: 'Total Sales Amount',
+        value: `₦${Number(stats?.total_sales || 0).toFixed(2)}`,
+        icon: DollarSign,
+        color: '#dc2626',
+        isHighlight: true,
+      },
+      {
+        title: 'Today Sales',
+        value: `₦${Number(stats?.today_sales || 0).toFixed(2)}`,
+        icon: TrendingUp,
+        color: 'var(--success)',
+      },
+      {
+        title: 'Total Orders',
+        value: stats?.total_orders || 0,
+        icon: ShoppingCart,
+        color: 'var(--accent)',
+      },
+    ]
     : [
-        {
-          title: 'Total Sales',
-          value: `₦${stats?.total_sales.toFixed(2) || '0.00'}`,
-          icon: DollarSign,
-          color: 'var(--primary)',
-        },
-        {
-          title: 'Total Orders',
-          value: stats?.total_orders || 0,
-          icon: ShoppingCart,
-          color: 'var(--accent)',
-        },
-        {
-          title: 'Today Sales',
-          value: `₦${stats?.today_sales.toFixed(2) || '0.00'}`,
-          icon: TrendingUp,
-          color: 'var(--success)',
-        },
-        {
-          title: 'Low Stock Items',
-          value: stats?.low_stock_items || 0,
-          icon: AlertTriangle,
-          color: 'var(--warning)',
-        },
-      ];
+      {
+        title: 'Total Sales',
+        value: `₦${Number(stats?.total_sales || 0).toFixed(2)}`,
+        icon: DollarSign,
+        color: 'var(--primary)',
+      },
+      {
+        title: 'Total Orders',
+        value: stats?.total_orders || 0,
+        icon: ShoppingCart,
+        color: 'var(--accent)',
+      },
+      {
+        title: 'Today Sales',
+        value: `₦${Number(stats?.today_sales || 0).toFixed(2)}`,
+        icon: TrendingUp,
+        color: 'var(--success)',
+      },
+      {
+        title: 'Low Stock Items',
+        value: stats?.low_stock_items || 0,
+        icon: AlertTriangle,
+        color: 'var(--warning)',
+      },
+    ];
 
   return (
     <div>
@@ -324,7 +324,7 @@ const Dashboard = () => {
                     <option value="">Select an order</option>
                     {orders.map((order) => (
                       <option key={order.id} value={order.id}>
-                        {order.order_number} - {order.customer_name || 'Walk-in Customer'} - ₦{order.total.toFixed(2)}
+                        {order.order_number} - {order.customer_name || 'Walk-in Customer'} - ₦{Number(order.total).toFixed(2)}
                       </option>
                     ))}
                   </select>
@@ -338,7 +338,7 @@ const Dashboard = () => {
                       </div>
                       <div style={{ fontSize: '0.875rem' }}>
                         <div>Customer: {selectedOrder.customer_name || 'Walk-in Customer'}</div>
-                        <div>Total: ₦{selectedOrder.total.toFixed(2)}</div>
+                        <div>Total: ₦{Number(selectedOrder.total).toFixed(2)}</div>
                         <div>Items: {selectedOrder.items.length}</div>
                       </div>
                     </div>

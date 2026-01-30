@@ -268,26 +268,26 @@ const Orders = () => {
               Filters
             </button>
           )}
-          {canCreate && (
-            <button
-              onClick={() => setShowModal(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
+        {canCreate && (
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
                 background: '#dc2626',
-                color: 'white',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              <Plus size={18} />
-              Create Order
-            </button>
-          )}
+              color: 'white',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '500',
+            }}
+          >
+            <Plus size={18} />
+            Create Order
+          </button>
+        )}
         </div>
       </div>
 
@@ -494,19 +494,19 @@ const Orders = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => {
-                const statusStyle = getStatusColor(order.status);
-                return (
+        {orders.map((order) => {
+          const statusStyle = getStatusColor(order.status);
+          return (
                   <tr key={order.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--background)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>
-                      {order.order_number}
+                    {order.order_number}
                     </td>
                     <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
                       {order.customer_name || 'Walk-in'}
                       {order.customer_phone && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                           {order.customer_phone}
-                        </div>
+                </div>
                       )}
                     </td>
                     {isAdmin && (
@@ -518,19 +518,19 @@ const Orders = () => {
                       {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <span
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '9999px',
+                  <span
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '9999px',
                           fontSize: '0.75rem',
-                          background: statusStyle.bg,
-                          color: statusStyle.color,
+                      background: statusStyle.bg,
+                      color: statusStyle.color,
                           fontWeight: '600',
                           display: 'inline-block',
-                        }}
-                      >
-                        {order.status.toUpperCase()}
-                      </span>
+                    }}
+                  >
+                    {order.status.toUpperCase()}
+                  </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>
                       ₦{Number(order.total).toFixed(2)}
@@ -539,7 +539,7 @@ const Orders = () => {
                       {new Date(order.created_at).toLocaleDateString()}
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                         {new Date(order.created_at).toLocaleTimeString()}
-                      </div>
+                </div>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
@@ -611,32 +611,32 @@ const Orders = () => {
                         )}
 
                         {/* Submit button - only for pending orders owned by sales rep */}
-                        {order.status === 'pending' && canCreate && order.sales_rep_id === user?.id && (
-                          <button
+              {order.status === 'pending' && canCreate && order.sales_rep_id === user?.id && (
+                <button
                             onClick={() => {
                               if (confirm('Submit this order for payment confirmation?')) {
                                 handleSubmitOrder(order.id);
                               }
                             }}
-                            style={{
+                  style={{
                               display: 'inline-flex',
-                              alignItems: 'center',
+                    alignItems: 'center',
                               gap: '0.25rem',
                               padding: '0.5rem 0.75rem',
                               background: '#dc2626',
-                              color: 'white',
-                              borderRadius: '0.5rem',
-                              border: 'none',
-                              cursor: 'pointer',
+                    color: 'white',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    cursor: 'pointer',
                               fontSize: '0.75rem',
                               fontWeight: '500',
-                            }}
+                  }}
                             title="Submit for Payment"
-                          >
+                >
                             <Check size={14} />
                             Submit
-                          </button>
-                        )}
+                </button>
+              )}
 
                         {/* Status indicator for submitted orders */}
                         {order.status === 'submitted' && isSalesRep && (
@@ -651,11 +651,11 @@ const Orders = () => {
                             Paid
                           </span>
                         )}
-                      </div>
+            </div>
                     </td>
                   </tr>
-                );
-              })}
+          );
+        })}
             </tbody>
           </table>
         </div>

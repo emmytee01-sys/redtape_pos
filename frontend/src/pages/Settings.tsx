@@ -14,6 +14,8 @@ const Settings = () => {
     bank_name: '',
   });
   const [receiptName, setReceiptName] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
+  const [storePhone, setStorePhone] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -30,6 +32,8 @@ const Settings = () => {
       setAccountNumbers(accounts);
       setSettings(systemSettings);
       setReceiptName(systemSettings.receipt_name || '');
+      setStoreAddress(systemSettings.store_address || '');
+      setStorePhone(systemSettings.store_phone || '');
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
@@ -85,9 +89,22 @@ const Settings = () => {
     try {
       await settingsService.updateSetting('receipt_name', receiptName);
       setSettings({ ...settings, receipt_name: receiptName });
-      alert('Receipt name saved successfully');
+      alert('Receipt info saved successfully');
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to save receipt name');
+    }
+  };
+
+  const handleSaveStoreDetails = async () => {
+    try {
+      await Promise.all([
+        settingsService.updateSetting('store_address', storeAddress),
+        settingsService.updateSetting('store_phone', storePhone)
+      ]);
+      setSettings({ ...settings, store_address: storeAddress, store_phone: storePhone });
+      alert('Store details saved successfully');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to save store details');
     }
   };
 
@@ -252,7 +269,7 @@ const Settings = () => {
         )}
       </div>
 
-      {/* Receipt Name Section */}
+      {/* Receipt & Store Details Section */}
       <div
         style={{
           background: 'var(--surface)',
@@ -265,40 +282,107 @@ const Settings = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
           <FileText size={24} color="#dc2626" />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '600' }}>Receipt Name</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '600' }}>Receipt & Store Details</h2>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <input
-            type="text"
-            value={receiptName}
-            onChange={(e) => setReceiptName(e.target.value)}
-            placeholder="Enter receipt name"
-            style={{
-              flex: 1,
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0.5rem',
-              fontSize: '1rem',
-            }}
-          />
-          <button
-            onClick={handleSaveReceiptName}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              background: '#dc2626',
-              color: 'white',
-              borderRadius: '0.5rem',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '500',
-            }}
-          >
-            <Save size={18} />
-            Save
-          </button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+              Business/Receipt Name
+            </label>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={receiptName}
+                onChange={(e) => setReceiptName(e.target.value)}
+                placeholder="Enter receipt name"
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                }}
+              />
+              <button
+                onClick={handleSaveReceiptName}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  background: '#dc2626',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                <Save size={18} />
+                Save
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+              Store Address
+            </label>
+            <textarea
+              value={storeAddress}
+              onChange={(e) => setStoreAddress(e.target.value)}
+              placeholder="Enter store address"
+              rows={2}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid var(--border)',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                marginBottom: '1rem'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+              Store Phone Number
+            </label>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={storePhone}
+                onChange={(e) => setStorePhone(e.target.value)}
+                placeholder="Enter store phone"
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                }}
+              />
+              <button
+                onClick={handleSaveStoreDetails}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  background: '#2563eb',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                <Save size={18} />
+                Save Store Details
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -18,10 +18,10 @@ export class AuthService {
     const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
     
     const payload = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role_name || '',
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role_name || '',
     };
     
     const token = jwt.sign(payload, secret, {

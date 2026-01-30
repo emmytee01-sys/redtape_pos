@@ -172,7 +172,7 @@ const Reports = () => {
                 <td style={{ padding: '1rem' }}>{item.product_name}</td>
                 <td style={{ padding: '1rem' }}>{item.category}</td>
                 <td style={{ padding: '1rem' }}>{item.total_quantity_sold}</td>
-                <td style={{ padding: '1rem', fontWeight: '600' }}>₦{item.total_revenue.toFixed(2)}</td>
+                <td style={{ padding: '1rem', fontWeight: '600' }}>₦{Number(item.total_revenue).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>

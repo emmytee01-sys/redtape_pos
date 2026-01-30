@@ -8,7 +8,7 @@ const getApiBaseUrl = () => {
   }
   // In production, use the actual backend URL
   // You can also set this via environment variable: import.meta.env.VITE_API_URL
-  return import.meta.env.VITE_API_URL || 'https://98.92.181.124/api';
+  return import.meta.env.VITE_API_URL || 'https://redtapepos.com.ng/api';
 };
 
 const api = axios.create({

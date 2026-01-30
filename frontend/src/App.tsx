@@ -9,6 +9,9 @@ import Payments from './pages/Payments';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import Vendors from './pages/Vendors';
+import DiscountRequests from './pages/DiscountRequests';
+import InventoryAlerts from './pages/InventoryAlerts';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   return authService.isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
@@ -33,6 +36,9 @@ function App() {
           <Route path="payments" element={<Payments />} />
           <Route path="reports" element={<Reports />} />
           <Route path="users" element={<Users />} />
+          <Route path="vendors" element={<Vendors />} />
+          <Route path="discount-requests" element={<DiscountRequests />} />
+          <Route path="inventory-alerts" element={<InventoryAlerts />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

@@ -9,6 +9,9 @@ import {
   Users as UsersIcon,
   LogOut,
   Settings as SettingsIcon,
+  Truck,
+  Percent,
+  Bell,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -34,6 +37,12 @@ const DashboardLayout = () => {
     { path: '/payments', icon: CreditCard, label: 'Payments' },
     { path: '/reports', icon: BarChart3, label: 'Reports' },
   ];
+
+  if (user?.role === 'admin' || user?.role === 'manager') {
+    menuItems.push({ path: '/vendors', icon: Truck, label: 'Vendors' });
+    menuItems.push({ path: '/discount-requests', icon: Percent, label: 'Discount Requests' });
+    menuItems.push({ path: '/inventory-alerts', icon: Bell, label: 'Inventory Alerts' });
+  }
 
   if (user?.role === 'admin') {
     menuItems.push({ path: '/users', icon: UsersIcon, label: 'Users' });

@@ -47,11 +47,15 @@ netlify deploy --prod
 In Netlify Dashboard → Site settings → Environment variables, add:
 
 ```
-VITE_API_URL=http://98.92.181.124:3000/api
-VITE_BACKEND_URL=http://98.92.181.124:3000
+VITE_API_URL=https://redtapepos.com.ng/api
+VITE_BACKEND_URL=https://redtapepos.com.ng
 ```
 
-**Note:** After deployment, update `VITE_API_URL` to use your backend URL (could be ngrok URL or your server IP).
+**Important:** 
+- Use `https://` (not `http://`)
+- Do NOT include `:3000` port - Nginx handles HTTPS on port 443
+- After updating, trigger a new deployment in Netlify
+- If you haven't set up SSL yet, use the IP address: `https://98.92.181.124`
 
 ### Step 4: Update Backend CORS
 
@@ -86,8 +90,9 @@ pm2 restart pos-backend
 The backend is already deployed and running on the server with PM2.
 
 ### Current Backend URL
-- **Production:** `http://98.92.181.124:3000`
-- **API Base:** `http://98.92.181.124:3000/api`
+- **Production (with domain):** `https://redtapepos.com.ng`
+- **Production (IP only):** `https://98.92.181.124` (if SSL is set up)
+- **API Base:** `https://redtapepos.com.ng/api`
 
 ### Backend Management Commands
 
@@ -139,9 +144,10 @@ ngrok http 5173
 - Check that all dependencies are installed: `npm install`
 
 ### API Connection Issues
-- Verify backend is running: `curl http://98.92.181.124:3000/health`
+- Verify backend is running: `curl https://redtapepos.com.ng/health` or `curl http://98.92.181.124:3000/health`
 - Check CORS configuration in backend `.env`
 - Verify environment variables in Netlify are set correctly
+- Check SSL certificate: `curl -I https://redtapepos.com.ng`
 
 ### Receipt Download Issues
 - Ensure `VITE_BACKEND_URL` is set correctly
@@ -155,11 +161,50 @@ ngrok http 5173
 - Updated `frontend/src/services/api.ts` - Dynamic API URL based on environment
 - Updated `frontend/src/pages/Payments.tsx` - Dynamic backend URL for receipts
 
+## SSL Certificate Setup (Let's Encrypt)
+
+If you have a domain name (e.g., `redtapepos.com.ng`), you can set up a free SSL certificate:
+
+### Prerequisites
+1. Domain must point to your server IP (DNS A record)
+2. Port 80 and 443 must be open in AWS Security Group
+3. Wait for DNS propagation (5-30 minutes)
+
+### Setup Steps
+
+1. **SSH into your server:**
+```bash
+ssh -i your-key.pem ubuntu@98.92.181.124
+```
+
+2. **Run the SSL setup script:**
+```bash
+cd ~/redtap-pos
+git pull
+sudo bash scripts/setup-letsencrypt-ssl.sh
+```
+
+3. **Update backend CORS** (if not already done):
+```bash
+cd ~/redtap-pos/backend
+nano .env
+# Update: CORS_ORIGIN=http://localhost:5173,https://redtapepos.netlify.app
+npm run build
+pm2 restart pos-backend
+```
+
+4. **Update Netlify environment variables:**
+   - `VITE_API_URL=https://redtapepos.com.ng/api`
+   - `VITE_BACKEND_URL=https://redtapepos.com.ng`
+   - Trigger a new deployment
+
+The SSL certificate will auto-renew every 90 days.
+
 ## Next Steps
 
-1. Deploy frontend to Netlify
-2. Set environment variables in Netlify
-3. Update backend CORS with Netlify URL
-4. Test the complete workflow
-5. Consider setting up a domain name for better URLs
+1. ✅ Set up SSL certificate with Let's Encrypt (if you have a domain)
+2. Deploy frontend to Netlify
+3. Set environment variables in Netlify
+4. Update backend CORS with Netlify URL
+5. Test the complete workflow
 

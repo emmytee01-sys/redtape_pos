@@ -21,6 +21,8 @@ export class ReceiptService {
 
     // Get settings
     const receiptName = (await SettingsModel.getSetting('receipt_name')) || 'Receipt';
+    const storeAddress = await SettingsModel.getSetting('store_address');
+    const storePhone = await SettingsModel.getSetting('store_phone');
     const logoPath = await SettingsModel.getSetting('logo_path');
     const accountNumbers = await SettingsModel.getAllAccountNumbers();
     const activeAccountNumbers = accountNumbers.filter((acc) => acc.is_active);
@@ -33,7 +35,7 @@ export class ReceiptService {
     // Logo at top (if exists)
     const pageWidth = doc.page.width;
     const pageMargin = 50;
-    
+
     if (logoPath) {
       const logoFilePath = path.join(process.cwd(), 'public', logoPath);
       if (fs.existsSync(logoFilePath)) {
@@ -56,11 +58,13 @@ export class ReceiptService {
 
     // Header
     doc.fontSize(24).text(receiptName.toUpperCase(), { align: 'center' });
+    if (storeAddress) doc.fontSize(10).text(storeAddress, { align: 'center' });
+    if (storePhone) doc.fontSize(10).text(`Tel: ${storePhone}`, { align: 'center' });
     doc.moveDown();
     doc.fontSize(12).text(`Receipt Number: ${receiptNumber}`, { align: 'center' });
     doc.text(`Date: ${new Date().toLocaleString()}`, { align: 'center' });
     doc.moveDown(0.5);
-    
+
     // Status - PAID
     doc.fontSize(14).font('Helvetica-Bold').fillColor('#10b981');
     doc.text('STATUS: PAID', { align: 'center' });
@@ -126,14 +130,14 @@ export class ReceiptService {
     doc.fontSize(14).text('Payment Details', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(10);
-    
+
     // Map payment method to display format
     let paymentMethodDisplay = payment.payment_method.toUpperCase();
     // Already using 'pos' in database, but handle legacy 'card' if exists
     if (paymentMethodDisplay === 'CARD') {
       paymentMethodDisplay = 'POS';
     }
-    
+
     doc.text(`Payment Method: ${paymentMethodDisplay}`);
     doc.text(`Amount Paid: ₦${Number(payment.amount).toFixed(2)}`);
     doc.text(`Confirmed By: ${payment.accountant_name || 'N/A'}`);
@@ -145,7 +149,7 @@ export class ReceiptService {
       doc.fontSize(14).text('Account Details', { underline: true });
       doc.moveDown(0.5);
       doc.fontSize(10);
-      
+
       activeAccountNumbers.forEach((account) => {
         doc.text(`${account.bank_name}: ${account.account_number} - ${account.account_name}`);
       });
