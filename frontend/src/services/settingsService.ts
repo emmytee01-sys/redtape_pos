@@ -13,6 +13,8 @@ export interface AccountNumber {
 export interface SystemSettings {
   receipt_name: string;
   logo_path: string;
+  store_address?: string;
+  store_phone?: string;
 }
 
 export const settingsService = {

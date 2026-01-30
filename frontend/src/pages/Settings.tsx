@@ -4,7 +4,7 @@ import { Plus, Edit, Trash2, Save, Upload, X, CreditCard, FileText, Image } from
 
 const Settings = () => {
   const [accountNumbers, setAccountNumbers] = useState<AccountNumber[]>([]);
-  const [settings, setSettings] = useState<SystemSettings>({ receipt_name: '', logo_path: '' });
+  const [settings, setSettings] = useState<SystemSettings>({ receipt_name: '', logo_path: '', store_address: '', store_phone: '' });
   const [loading, setLoading] = useState(true);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountNumber | null>(null);
