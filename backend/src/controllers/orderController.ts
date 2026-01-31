@@ -3,6 +3,7 @@ import { OrderModel } from '../models/Order';
 import { ProductModel } from '../models/Product';
 import { AuthRequest } from '../middlewares/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { ReceiptService } from '../services/receiptService';
 
 export class OrderController {
   static async createOrder(req: AuthRequest, res: Response): Promise<void> {
@@ -300,6 +301,29 @@ export class OrderController {
       res.json({ message: 'Order deleted successfully' });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to delete order' });
+    }
+  }
+
+  static async getOrderInvoice(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await OrderModel.findById(parseInt(id));
+
+      if (!order) {
+        res.status(404).json({ error: 'Order not found' });
+        return;
+      }
+
+      // Sales reps can only view their own orders
+      if (req.user!.role === 'sales_rep' && order.sales_rep_id !== req.user!.id) {
+        res.status(403).json({ error: 'Access denied' });
+        return;
+      }
+
+      const invoiceFilePath = await ReceiptService.generateInvoice(order);
+      res.json({ file_path: invoiceFilePath });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to generate invoice' });
     }
   }
 }

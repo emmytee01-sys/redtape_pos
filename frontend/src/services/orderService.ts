@@ -72,5 +72,10 @@ export const orderService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/orders/${id}`);
   },
+
+  getInvoice: async (id: number): Promise<{ file_path: string }> => {
+    const response = await api.get<{ file_path: string }>(`/orders/${id}/invoice`);
+    return response.data;
+  },
 };
 

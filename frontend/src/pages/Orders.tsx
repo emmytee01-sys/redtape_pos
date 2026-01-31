@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { orderService, Order } from '../services/orderService';
 import { productService, Product } from '../services/productService';
 import { authService } from '../services/authService';
-import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye, Printer } from 'lucide-react';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -237,6 +237,31 @@ const Orders = () => {
     setStatusFilter('all');
     setStartDate('');
     setEndDate('');
+  };
+
+  const getBackendUrl = () => {
+    if (import.meta.env.DEV) return 'http://localhost:3000';
+    return import.meta.env.VITE_BACKEND_URL || 'https://redtapepos.com.ng';
+  };
+
+  const handlePrintInvoice = async (orderId: number) => {
+    try {
+      const { file_path } = await orderService.getInvoice(orderId);
+      if (file_path) {
+        let invoiceUrl: string;
+        if (file_path.startsWith('http')) {
+          invoiceUrl = file_path;
+        } else if (file_path.startsWith('/')) {
+          const filename = file_path.split('/').pop() || '';
+          invoiceUrl = `${getBackendUrl()}/receipts/${filename}`;
+        } else {
+          invoiceUrl = `${getBackendUrl()}/${file_path}`;
+        }
+        window.open(invoiceUrl, '_blank');
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to generate invoice');
+    }
   };
 
   if (loading) {
@@ -638,7 +663,31 @@ const Orders = () => {
                           </button>
                         )}
 
-                        {/* Status indicator for submitted orders */}
+                        {/* Print Invoice button for submitted orders */}
+                        {order.status === 'submitted' && (
+                          <button
+                            onClick={() => handlePrintInvoice(order.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.5rem 0.75rem',
+                              background: '#f59e0b',
+                              color: 'white',
+                              borderRadius: '0.5rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                            }}
+                            title="Print Proforma Invoice"
+                          >
+                            <Printer size={14} />
+                            Invoice
+                          </button>
+                        )}
+
+                        {/* Status indicator for submitted orders - only if not sales rep or just as a label */}
                         {order.status === 'submitted' && isSalesRep && (
                           <span style={{ fontSize: '0.75rem', color: '#1e40af', padding: '0.5rem' }}>
                             Awaiting Payment

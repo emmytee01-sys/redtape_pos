@@ -11,6 +11,7 @@ router.post('/', authorize('sales_rep', 'admin', 'manager'), OrderController.cre
 router.get('/', OrderController.getAllOrders);
 router.get('/:id', OrderController.getOrder);
 router.post('/:id/submit', authorize('sales_rep', 'admin'), OrderController.submitOrder);
+router.get('/:id/invoice', OrderController.getOrderInvoice);
 router.put('/:id', authorize('sales_rep', 'admin', 'manager'), OrderController.updateOrder);
 router.delete('/:id', authorize('sales_rep', 'admin', 'manager'), OrderController.deleteOrder);
 
