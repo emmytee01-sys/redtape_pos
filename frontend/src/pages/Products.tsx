@@ -80,7 +80,7 @@ const Products = () => {
       setLoading(true);
       const [productData, vendorData] = await Promise.all([
         productService.getAll(true),
-        vendorService.getAll()
+        canManage ? vendorService.getAll() : Promise.resolve([])
       ]);
       setProducts(productData);
       setVendors(vendorData);

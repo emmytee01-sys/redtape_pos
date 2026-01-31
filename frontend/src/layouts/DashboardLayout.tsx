@@ -34,9 +34,12 @@ const DashboardLayout = () => {
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/products', icon: Package, label: 'Products' },
     { path: '/orders', icon: ShoppingCart, label: 'Orders' },
-    { path: '/payments', icon: CreditCard, label: 'Payments' },
-    { path: '/reports', icon: BarChart3, label: 'Reports' },
   ];
+
+  if (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'accountant') {
+    menuItems.push({ path: '/payments', icon: CreditCard, label: 'Payments' });
+    menuItems.push({ path: '/reports', icon: BarChart3, label: 'Reports' });
+  }
 
   if (user?.role === 'admin' || user?.role === 'manager') {
     menuItems.push({ path: '/vendors', icon: Truck, label: 'Vendors' });
