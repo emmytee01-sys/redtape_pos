@@ -295,7 +295,7 @@ export class ReceiptService {
 
     doc.end();
 
-    await new Promise((resolve) => doc.on('finish', resolve));
+    await new Promise((resolve) => doc.on('end', resolve));
     return `receipts/${invoiceNumber}.pdf`;
   }
 }
