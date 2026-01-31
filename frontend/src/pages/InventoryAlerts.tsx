@@ -6,7 +6,6 @@ import {
     ArrowRight,
     Package,
     TrendingDown,
-    ShoppingCart,
     Bell,
     CheckCircle,
     Truck

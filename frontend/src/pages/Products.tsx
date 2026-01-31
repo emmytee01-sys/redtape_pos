@@ -7,13 +7,9 @@ import {
   Plus,
   Upload,
   Search,
-  Package,
-  CheckCircle,
-  XCircle,
   FolderPlus,
   Download,
   Filter,
-  X,
   ShoppingCart,
   Bell
 } from 'lucide-react';
@@ -47,13 +43,13 @@ const Products = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [newCategory, setNewCategory] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [uploading] = useState(false);
   const [pickItemsSearch, setPickItemsSearch] = useState('');
   const [salesCart, setSalesCart] = useState<Array<{ product_id: number; product: Product; quantity: number }>>([]);
 
   // Filters
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus] = useState<string>('all');
   const [filterStock, setFilterStock] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
