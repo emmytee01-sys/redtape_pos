@@ -666,7 +666,12 @@ const Orders = () => {
                         {/* Print Invoice button for submitted orders */}
                         {order.status === 'submitted' && (
                           <button
-                            onClick={() => handlePrintInvoice(order.id)}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handlePrintInvoice(order.id);
+                            }}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -678,17 +683,19 @@ const Orders = () => {
                               border: 'none',
                               cursor: 'pointer',
                               fontSize: '0.75rem',
-                              fontWeight: '500',
+                              fontWeight: '600',
+                              position: 'relative',
+                              zIndex: 1,
                             }}
                             title="Print Proforma Invoice"
                           >
                             <Printer size={14} />
-                            Invoice
+                            Print Invoice
                           </button>
                         )}
 
-                        {/* Status indicator for submitted orders - only if not sales rep or just as a label */}
-                        {order.status === 'submitted' && isSalesRep && (
+                        {/* Status label for submitted orders - only for non-sales reps to avoid clutter since sales reps have the button */}
+                        {order.status === 'submitted' && !isSalesRep && (
                           <span style={{ fontSize: '0.75rem', color: '#1e40af', padding: '0.5rem' }}>
                             Awaiting Payment
                           </span>
