@@ -9,6 +9,7 @@ import { DollarSign, ShoppingCart, TrendingUp, AlertTriangle, Package, Percent }
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -16,6 +17,9 @@ const Dashboard = () => {
   const [discountReason, setDiscountReason] = useState('');
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
+
+  const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
   const isSalesRep = user?.role === 'sales_rep';
   const isAccountant = user?.role === 'accountant';
 
@@ -30,9 +34,11 @@ const Dashboard = () => {
   const loadOrders = async () => {
     try {
       const data = await orderService.getAll();
-      // Only show pending orders for discount requests
-      const pendingOrders = data.filter((order) => order.status === 'pending' && order.sales_rep_id === user?.id);
-      setOrders(pendingOrders);
+      if (Array.isArray(data)) {
+        // Only show pending orders for discount requests
+        const pendingOrders = data.filter((order) => order.status === 'pending' && order.sales_rep_id === user?.id);
+        setOrders(pendingOrders);
+      }
     } catch (error) {
       console.error('Failed to load orders:', error);
     }
@@ -40,43 +46,103 @@ const Dashboard = () => {
 
   const loadStats = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const data = await reportService.getDashboardStats();
       setStats(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load dashboard stats:', error);
+      setError('Failed to load dashboard statistics. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', flexDirection: 'column', gap: '1rem' }}>
+        <div className="loading-spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ color: 'var(--text-secondary)' }}>Loading dashboard...</p>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
   }
 
-  // For accountants, prioritize Total Sales and make it more prominent
-  const cards = isAccountant
-    ? [
+  if (!user) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--surface)', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
+        <h2 style={{ marginBottom: '1rem' }}>Session Expired</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Please log in again to view the dashboard.</p>
+        <button onClick={() => navigate('/login')} style={{ background: 'var(--primary)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.5rem' }}>Go to Login</button>
+      </div>
+    );
+  }
+
+  // Define cards based on roles
+  let dashboardCards: any[] = [];
+
+  if (isAccountant || isAdmin || isManager) {
+    dashboardCards = [
       {
         title: 'Total Sales Amount',
-        value: `₦${Number(stats?.total_sales || 0).toFixed(2)}`,
+        value: `₦${Number(stats?.total_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         icon: DollarSign,
         color: '#dc2626',
         isHighlight: true,
+        description: 'Total revenue from all paid orders'
       },
       {
-        title: 'Today Sales',
-        value: `₦${Number(stats?.today_sales || 0).toFixed(2)}`,
+        title: 'Today\'s Sales',
+        value: `₦${Number(stats?.today_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         icon: TrendingUp,
         color: 'var(--success)',
       },
       {
         title: 'Total Orders',
+        value: (stats?.total_orders || 0).toLocaleString(),
+        icon: ShoppingCart,
+        color: 'var(--primary)',
+      }
+    ];
+
+    if (isAdmin || isManager) {
+      dashboardCards.push({
+        title: 'Low Stock Items',
+        value: stats?.low_stock_items || 0,
+        icon: AlertTriangle,
+        color: 'var(--warning)',
+      });
+    }
+  } else if (isSalesRep) {
+    dashboardCards = [
+      {
+        title: 'Your Total Sales',
+        value: `₦${Number(stats?.total_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        icon: DollarSign,
+        color: 'var(--primary)',
+      },
+      {
+        title: 'Your Today\'s Sales',
+        value: `₦${Number(stats?.today_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        icon: TrendingUp,
+        color: 'var(--success)',
+      },
+      {
+        title: 'Your Orders',
         value: stats?.total_orders || 0,
         icon: ShoppingCart,
         color: 'var(--accent)',
       },
-    ]
-    : [
+      {
+        title: 'Low Stock Items',
+        value: stats?.low_stock_items || 0,
+        icon: AlertTriangle,
+        color: 'var(--warning)',
+      }
+    ];
+  } else {
+    // Default cards for any other role
+    dashboardCards = [
       {
         title: 'Total Sales',
         value: `₦${Number(stats?.total_sales || 0).toFixed(2)}`,
@@ -88,36 +154,48 @@ const Dashboard = () => {
         value: stats?.total_orders || 0,
         icon: ShoppingCart,
         color: 'var(--accent)',
-      },
-      {
-        title: 'Today Sales',
-        value: `₦${Number(stats?.today_sales || 0).toFixed(2)}`,
-        icon: TrendingUp,
-        color: 'var(--success)',
-      },
-      {
-        title: 'Low Stock Items',
-        value: stats?.low_stock_items || 0,
-        icon: AlertTriangle,
-        color: 'var(--warning)',
-      },
+      }
     ];
+  }
 
   return (
-    <div>
-      <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Dashboard</h1>
+    <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2.25rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.025em' }}>Dashboard</h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            Welcome back, <span style={{ fontWeight: '600', color: 'var(--text)' }}>{user.full_name}</span>. Here's what's happening today.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          {error && <span style={{ color: 'var(--error)', fontSize: '0.875rem', display: 'flex', alignItems: 'center' }}>{error}</span>}
+          <button
+            onClick={loadStats}
+            style={{
+              padding: '0.625rem 1.25rem',
+              background: 'white',
+              border: '1px solid var(--border)',
+              borderRadius: '0.5rem',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            Refresh Data
+          </button>
+        </div>
+      </div>
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: isAccountant
-            ? 'repeat(auto-fit, minmax(300px, 1fr))'
-            : 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '1.5rem',
-          marginBottom: '2rem',
+          marginBottom: '2.5rem',
         }}
       >
-        {cards.map((card: any) => {
+        {dashboardCards.map((card: any) => {
           const Icon = card.icon;
           const isHighlight = card.isHighlight;
           return (
@@ -125,40 +203,41 @@ const Dashboard = () => {
               key={card.title}
               style={{
                 background: isHighlight ? `linear-gradient(135deg, ${card.color}15 0%, ${card.color}05 100%)` : 'var(--surface)',
-                padding: isHighlight ? '2rem' : '1.5rem',
-                borderRadius: '0.75rem',
-                boxShadow: isHighlight ? `0 4px 6px -1px ${card.color}30` : 'var(--shadow)',
+                padding: '1.75rem',
+                borderRadius: '1rem',
+                boxShadow: isHighlight ? `0 10px 15px -3px ${card.color}20` : 'var(--shadow)',
                 border: isHighlight ? `2px solid ${card.color}` : '1px solid var(--border)',
-                transform: isHighlight ? 'scale(1.02)' : 'none',
                 transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
                 <div style={{ flex: 1 }}>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {card.title}
                   </p>
-                  <p style={{ fontSize: isHighlight ? '2.5rem' : '2rem', fontWeight: '700', color: card.color }}>
+                  <p style={{ fontSize: isHighlight ? '2.5rem' : '2.25rem', fontWeight: '800', color: isHighlight ? card.color : 'var(--text)', lineHeight: '1' }}>
                     {card.value}
                   </p>
-                  {isHighlight && isAccountant && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                      Total revenue from all paid orders
+                  {card.description && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+                      {card.description}
                     </p>
                   )}
                 </div>
                 <div
                   style={{
-                    width: isHighlight ? '64px' : '48px',
-                    height: isHighlight ? '64px' : '48px',
-                    borderRadius: '0.5rem',
-                    background: `${card.color}20`,
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '1rem',
+                    background: `${card.color}15`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon size={isHighlight ? 32 : 24} color={card.color} />
+                  <Icon size={28} color={card.color} />
                 </div>
               </div>
             </div>
@@ -166,100 +245,98 @@ const Dashboard = () => {
         })}
       </div>
 
-      {isSalesRep ? (
-        <div
-          style={{
-            background: 'var(--surface)',
-            padding: '1.5rem',
-            borderRadius: '0.75rem',
-            boxShadow: 'var(--shadow)',
-            border: '1px solid var(--border)',
-          }}
-        >
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem' }}>Quick Actions</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+      {isSalesRep && (
+        <section style={{ marginBottom: '2.5rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text)' }}>Quick Actions</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
             <button
               onClick={() => navigate('/products')}
               style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem',
+                gap: '1.5rem',
                 padding: '2rem',
                 background: '#dc2626',
                 color: 'white',
-                borderRadius: '0.75rem',
-                border: 'none',
+                borderRadius: '1rem',
                 cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '1rem',
-                transition: 'all 0.2s',
-                minHeight: '150px',
+                textAlign: 'left',
+                boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.4)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#b91c1c';
-                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.transform = 'translateY(-4px)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#dc2626';
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <Package size={48} />
-              <span>Pick Items (Order)</span>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '1rem', borderRadius: '0.75rem' }}>
+                <Package size={32} />
+              </div>
+              <div>
+                <span style={{ fontSize: '1.25rem', fontWeight: '700', display: 'block' }}>Pick Items</span>
+                <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>Create a new customer order</span>
+              </div>
             </button>
 
             <button
               onClick={() => setShowDiscountModal(true)}
               style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem',
+                gap: '1.5rem',
                 padding: '2rem',
                 background: '#2563eb',
                 color: 'white',
-                borderRadius: '0.75rem',
-                border: 'none',
+                borderRadius: '1rem',
                 cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '1rem',
-                transition: 'all 0.2s',
-                minHeight: '150px',
+                textAlign: 'left',
+                boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.4)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#1d4ed8';
-                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.transform = 'translateY(-4px)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#2563eb';
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <Percent size={48} />
-              <span>Request Discount</span>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '1rem', borderRadius: '0.75rem' }}>
+                <Percent size={32} />
+              </div>
+              <div>
+                <span style={{ fontSize: '1.25rem', fontWeight: '700', display: 'block' }}>Discount Request</span>
+                <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>Request price reduction</span>
+              </div>
             </button>
           </div>
-        </div>
-      ) : (
-        <div
+        </section>
+      )}
+
+      {(isAdmin || isManager || isAccountant) && (
+        <section
           style={{
             background: 'var(--surface)',
-            padding: '1.5rem',
-            borderRadius: '0.75rem',
+            padding: '2rem',
+            borderRadius: '1rem',
             boxShadow: 'var(--shadow)',
             border: '1px solid var(--border)',
           }}
         >
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>
-            Welcome to POS System
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--text)' }}>
+            System Overview
           </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Use the sidebar to navigate to different sections of the system.
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', maxWidth: '600px' }}>
+            You have access to all system modules. Use the sidebar to manage products, view detailed reports, and monitor user activity.
           </p>
-        </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button onClick={() => navigate('/reports')} style={{ padding: '0.75rem 1.5rem', background: 'var(--background)', borderRadius: '0.5rem', fontWeight: '600', border: '1px solid var(--border)' }}>View Reports</button>
+            {(isAdmin || isManager) && <button onClick={() => navigate('/products')} style={{ padding: '0.75rem 1.5rem', background: 'var(--background)', borderRadius: '0.5rem', fontWeight: '600', border: '1px solid var(--border)' }}>Inventory Management</button>}
+          </div>
+        </section>
       )}
 
       {/* Request Discount Modal */}
@@ -268,7 +345,8 @@ const Dashboard = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
+            background: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -283,27 +361,34 @@ const Dashboard = () => {
         >
           <div
             style={{
-              background: 'var(--surface)',
-              padding: '2rem',
-              borderRadius: '0.75rem',
+              background: 'white',
+              padding: '2.5rem',
+              borderRadius: '1.25rem',
               maxWidth: '600px',
               width: '90%',
-              maxHeight: '80vh',
+              maxHeight: '85vh',
               overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Request Discount</h2>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--text)' }}>Request Discount</h2>
 
             {orders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                <p>No pending orders available for discount request.</p>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Create an order first.</p>
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', background: 'var(--background)', borderRadius: '0.75rem' }}>
+                <p style={{ fontWeight: '600' }}>No pending orders found.</p>
+                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>You must have a pending order to request a discount.</p>
+                <button
+                  onClick={() => navigate('/products')}
+                  style={{ marginTop: '1.5rem', background: 'var(--primary)', color: 'white', padding: '0.625rem 1.25rem', borderRadius: '0.5rem', fontSize: '0.875rem' }}
+                >
+                  Create Order
+                </button>
               </div>
             ) : (
               <>
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem', color: 'var(--text)' }}>
                     Select Order *
                   </label>
                   <select
@@ -314,37 +399,40 @@ const Dashboard = () => {
                     }}
                     style={{
                       width: '100%',
-                      padding: '0.75rem',
+                      padding: '0.875rem',
                       border: '1px solid var(--border)',
-                      borderRadius: '0.5rem',
+                      borderRadius: '0.75rem',
                       fontSize: '1rem',
                       background: 'white',
+                      appearance: 'none',
+                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
                     }}
                   >
-                    <option value="">Select an order</option>
+                    <option value="">Select an order to discount</option>
                     {orders.map((order) => (
                       <option key={order.id} value={order.id}>
-                        {order.order_number} - {order.customer_name || 'Walk-in Customer'} - ₦{Number(order.total).toFixed(2)}
+                        {order.order_number} - {order.customer_name || 'Walk-in'} (₦{Number(order.total).toLocaleString()})
                       </option>
                     ))}
                   </select>
                 </div>
 
                 {selectedOrder && (
-                  <>
-                    <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--background)', borderRadius: '0.5rem' }}>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                        Order Details:
+                  <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                    <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'var(--background)', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                        Order Summary
                       </div>
-                      <div style={{ fontSize: '0.875rem' }}>
-                        <div>Customer: {selectedOrder.customer_name || 'Walk-in Customer'}</div>
-                        <div>Total: ₦{Number(selectedOrder.total).toFixed(2)}</div>
-                        <div>Items: {selectedOrder.items.length}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.925rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Customer:</span>
+                        <span style={{ fontWeight: '600' }}>{selectedOrder.customer_name || 'Walk-in Customer'}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>Current Total:</span>
+                        <span style={{ fontWeight: '600' }}>₦{Number(selectedOrder.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
                         Discount Amount (₦) *
                       </label>
                       <input
@@ -352,45 +440,47 @@ const Dashboard = () => {
                         step="0.01"
                         value={discountAmount}
                         onChange={(e) => setDiscountAmount(e.target.value)}
-                        placeholder="Enter discount amount"
+                        placeholder="0.00"
                         style={{
                           width: '100%',
-                          padding: '0.75rem',
+                          padding: '0.875rem',
                           border: '1px solid var(--border)',
-                          borderRadius: '0.5rem',
+                          borderRadius: '0.75rem',
                           fontSize: '1rem',
                         }}
                       />
                       {discountAmount && selectedOrder && (
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                          New Total: ₦{(Number(selectedOrder.total) - Number(discountAmount)).toFixed(2)}
+                        <div style={{ fontSize: '0.875rem', color: 'var(--success)', marginTop: '0.75rem', fontWeight: '500', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>New Total:</span>
+                          <span>₦{(Number(selectedOrder.total) - Number(discountAmount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                       )}
                     </div>
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                    <div style={{ marginBottom: '2rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
                         Reason for Discount *
                       </label>
                       <textarea
                         value={discountReason}
                         onChange={(e) => setDiscountReason(e.target.value)}
                         rows={4}
-                        placeholder="Explain why this discount is needed..."
+                        placeholder="Provide detailed justification for this discount request..."
                         style={{
                           width: '100%',
-                          padding: '0.75rem',
+                          padding: '0.875rem',
                           border: '1px solid var(--border)',
-                          borderRadius: '0.5rem',
+                          borderRadius: '0.75rem',
                           fontSize: '1rem',
                           resize: 'vertical',
+                          minHeight: '100px'
                         }}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                   <button
                     onClick={() => {
                       setShowDiscountModal(false);
@@ -399,12 +489,12 @@ const Dashboard = () => {
                       setDiscountReason('');
                     }}
                     style={{
-                      padding: '0.75rem 1.5rem',
-                      background: 'var(--background)',
+                      flex: 1,
+                      padding: '0.875rem',
+                      background: 'white',
                       border: '1px solid var(--border)',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontWeight: '500',
+                      borderRadius: '0.75rem',
+                      fontWeight: '600',
                     }}
                   >
                     Cancel
@@ -428,7 +518,7 @@ const Dashboard = () => {
                           discount_amount: discountValue,
                           reason: discountReason,
                         });
-                        alert(`Discount request submitted for ${selectedOrder.order_number}.\nDiscount: ₦${discountAmount}\nReason: ${discountReason}\n\nThis will be reviewed by admin.`);
+                        alert(`Discount request submitted for ${selectedOrder.order_number}.\nThis will be reviewed by an administrator.`);
                         setShowDiscountModal(false);
                         setSelectedOrder(null);
                         setDiscountAmount('');
@@ -440,13 +530,15 @@ const Dashboard = () => {
                     }}
                     disabled={!selectedOrder || !discountAmount || !discountReason}
                     style={{
-                      padding: '0.75rem 1.5rem',
-                      background: !selectedOrder || !discountAmount || !discountReason ? 'var(--text-secondary)' : '#2563eb',
+                      flex: 2,
+                      padding: '0.875rem',
+                      background: !selectedOrder || !discountAmount || !discountReason ? '#94a3b8' : '#2563eb',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '0.5rem',
+                      borderRadius: '0.75rem',
                       cursor: !selectedOrder || !discountAmount || !discountReason ? 'not-allowed' : 'pointer',
-                      fontWeight: '500',
+                      fontWeight: '600',
+                      boxShadow: selectedOrder && discountAmount && discountReason ? '0 4px 6px -1px rgba(37, 99, 235, 0.4)' : 'none',
                     }}
                   >
                     Submit Request
@@ -457,9 +549,13 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };
+
 
 export default Dashboard;
 
