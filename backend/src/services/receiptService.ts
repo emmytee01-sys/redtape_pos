@@ -216,7 +216,8 @@ export class ReceiptService {
     if (storeAddress) doc.fontSize(10).text(storeAddress, { align: 'center' });
     if (storePhone) doc.fontSize(10).text(`Tel: ${storePhone}`, { align: 'center' });
     doc.moveDown();
-    doc.fontSize(12).text(`PROFORMA INVOICE`, { align: 'center', bold: true });
+    doc.font('Helvetica-Bold').fontSize(12).text(`PROFORMA INVOICE`, { align: 'center' });
+    doc.font('Helvetica');
     doc.text(`Invoice Number: ${invoiceNumber}`, { align: 'center' });
     doc.text(`Date: ${new Date().toLocaleString()}`, { align: 'center' });
     doc.moveDown(0.5);
@@ -284,7 +285,8 @@ export class ReceiptService {
         doc.text(`${account.bank_name}: ${account.account_number} - ${account.account_name}`);
       });
       doc.moveDown(1);
-      doc.font('Helvetica-Bold').text('Kindly take this invoice to the Accountant after payment for confirmation.', { italic: true });
+      doc.font('Helvetica-BoldOblique').text('Kindly take this invoice to the Accountant after payment for confirmation.');
+      doc.font('Helvetica');
       doc.moveDown(2);
     }
 
