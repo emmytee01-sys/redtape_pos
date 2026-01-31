@@ -1,4 +1,4 @@
-import { X, Upload as UploadIcon } from 'lucide-react';
+import { Upload as UploadIcon } from 'lucide-react';
 
 interface CSVUploadModalProps {
     show: boolean;

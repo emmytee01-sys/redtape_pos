@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { productService, Product } from '../services/productService';
-import { alertService } from '../services/alertService'; // I need to check if this exists or create it
+
 import {
     AlertTriangle,
     ArrowRight,
-    Package,
     TrendingDown,
     Bell,
     CheckCircle,

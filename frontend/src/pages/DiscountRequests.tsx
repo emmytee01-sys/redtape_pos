@@ -7,7 +7,6 @@ import {
     MessageSquare,
     User as UserIcon,
     Clock,
-    DollarSign,
     Filter,
     Search,
     CheckCircle,

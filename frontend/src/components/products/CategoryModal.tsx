@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+
 
 interface CategoryModalProps {
     show: boolean;
