@@ -22,6 +22,26 @@ export interface ProductSalesReport {
   total_revenue: number;
 }
 
+export interface EndOfDayReport {
+  date: string;
+  summary: {
+    total_orders: number;
+    total_revenue: string | number;
+    subtotal: string | number;
+    total_tax: string | number;
+  };
+  payments: Array<{
+    payment_method: string;
+    count: number;
+    total_amount: string | number;
+  }>;
+  top_products: Array<{
+    product_name: string;
+    quantity_sold: number;
+    revenue: string | number;
+  }>;
+}
+
 export const reportService = {
   getDashboardStats: async (): Promise<DashboardStats> => {
     const response = await api.get<DashboardStats>('/reports/dashboard');
@@ -42,6 +62,13 @@ export const reportService = {
   }): Promise<ProductSalesReport[]> => {
     const response = await api.get<ProductSalesReport[]>('/reports/products', {
       params: filters,
+    });
+    return response.data;
+  },
+
+  getEndOfDayReport: async (date?: string): Promise<EndOfDayReport> => {
+    const response = await api.get<EndOfDayReport>('/reports/end-of-day', {
+      params: { date },
     });
     return response.data;
   },

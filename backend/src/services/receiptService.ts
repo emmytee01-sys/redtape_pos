@@ -14,147 +14,156 @@ export class ReceiptService {
     const receiptNumber = `RCP-${Date.now()}-${uuidv4().substring(0, 8).toUpperCase()}`;
     const receiptsDir = path.join(process.cwd(), 'receipts');
 
-    // Create receipts directory if it doesn't exist
     if (!fs.existsSync(receiptsDir)) {
       fs.mkdirSync(receiptsDir, { recursive: true });
     }
 
-    // Get settings
     const receiptName = (await SettingsModel.getSetting('receipt_name')) || 'Receipt';
     const storeAddress = await SettingsModel.getSetting('store_address');
     const storePhone = await SettingsModel.getSetting('store_phone');
     const logoPath = await SettingsModel.getSetting('logo_path');
-    const accountNumbers = await SettingsModel.getAllAccountNumbers();
-    const activeAccountNumbers = accountNumbers.filter((acc) => acc.is_active);
 
     const filePath = path.join(receiptsDir, `${receiptNumber}.pdf`);
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+    // POS Receipt width is usually 80mm (approx 226 points)
+    const pageWidth = 226;
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
+
+    // Initial estimate for height, will be auto-adjusted if needed or we use a long strip
+    const doc = new PDFDocument({
+      size: [pageWidth, 800], // Long strip for POS
+      margin: margin
+    });
 
     doc.pipe(fs.createWriteStream(filePath));
 
-    // Logo at top (if exists)
-    const pageWidth = doc.page.width;
-    const pageMargin = 50;
-
+    // Logo
+    let currentY = margin;
     if (logoPath) {
       const logoFilePath = path.join(process.cwd(), 'public', logoPath);
       if (fs.existsSync(logoFilePath)) {
         try {
-          const logoWidth = 100;
-          const logoHeight = 100;
-          const logoX = (pageWidth - logoWidth) / 2;
-          doc.image(logoFilePath, logoX, pageMargin, { width: logoWidth, height: logoHeight, fit: [logoWidth, logoHeight] });
-          doc.y = pageMargin + logoHeight + 20;
+          doc.image(logoFilePath, (pageWidth - 60) / 2, currentY, { width: 60 });
+          currentY += 70;
         } catch (error) {
           console.error('Failed to load logo:', error);
-          doc.y = pageMargin + 20;
         }
-      } else {
-        doc.y = pageMargin + 20;
       }
-    } else {
-      doc.y = pageMargin + 20;
     }
 
     // Header
-    doc.fontSize(24).text(receiptName.toUpperCase(), { align: 'center' });
-    if (storeAddress) doc.fontSize(10).text(storeAddress, { align: 'center' });
-    if (storePhone) doc.fontSize(10).text(`Tel: ${storePhone}`, { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Receipt Number: ${receiptNumber}`, { align: 'center' });
-    doc.text(`Date: ${new Date().toLocaleString()}`, { align: 'center' });
-    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').fontSize(14).text(receiptName.toUpperCase(), margin, currentY, { align: 'center', width: contentWidth });
+    currentY = doc.y + 2;
 
-    // Status - PAID
-    doc.fontSize(14).font('Helvetica-Bold').fillColor('#10b981');
-    doc.text('STATUS: PAID', { align: 'center' });
-    doc.fillColor('black').font('Helvetica');
-    doc.moveDown();
-
-    // Order Details
-    doc.fontSize(14).text('Order Details', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10);
-    doc.text(`Order Number: ${order.order_number}`);
-    doc.text(`Customer: ${order.customer_name || 'Walk-in Customer'}`);
-    if (order.customer_email) {
-      doc.text(`Email: ${order.customer_email}`);
+    doc.font('Helvetica').fontSize(8);
+    if (storeAddress) {
+      doc.text(storeAddress, margin, currentY, { align: 'center', width: contentWidth });
+      currentY = doc.y + 2;
     }
-    if (order.customer_phone) {
-      doc.text(`Phone: ${order.customer_phone}`);
+    if (storePhone) {
+      doc.text(`Tel: ${storePhone}`, margin, currentY, { align: 'center', width: contentWidth });
+      currentY = doc.y + 5;
     }
-    doc.moveDown();
 
-    // Items
-    doc.fontSize(14).text('Items', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10);
+    // Separator line
+    const drawDivider = (y: number) => {
+      doc.moveTo(margin, y).lineTo(pageWidth - margin, y).dash(2, { space: 2 }).stroke().undash();
+      return y + 10;
+    };
 
-    // Table header
-    doc.text('Item', 50, doc.y);
-    doc.text('Qty', 250, doc.y);
-    doc.text('Price', 300, doc.y);
-    doc.text('Subtotal', 400, doc.y);
-    doc.moveDown(0.3);
-    doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke();
-    doc.moveDown(0.3);
+    currentY = drawDivider(currentY);
 
-    // Items
+    // Receipt Info
+    doc.font('Helvetica-Bold').fontSize(9).text('SALES RECEIPT', margin, currentY, { align: 'center', width: contentWidth });
+    currentY = doc.y + 5;
+
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Receipt #: ${receiptNumber}`, margin, currentY);
+    doc.text(`Date: ${new Date().toLocaleString()}`, margin, doc.y + 2);
+    doc.text(`Customer: ${order.customer_name || 'Walk-in'}`, margin, doc.y + 2);
+    currentY = doc.y + 10;
+
+    currentY = drawDivider(currentY);
+
+    // Items Header
+    doc.font('Helvetica-Bold').fontSize(8);
+    doc.text('ITEM DESCRIPTION', margin, currentY);
+    doc.text('TOTAL', margin + 140, currentY, { width: 55, align: 'right' });
+    currentY = doc.y + 5;
+
+    // Items List
+    doc.font('Helvetica').fontSize(8);
+    let totalItemsCount = 0;
     order.items.forEach((item) => {
-      const startY = doc.y;
-      doc.text(item.product_name || `SKU: ${item.product_sku}`, 50, startY);
-      doc.text(item.quantity.toString(), 250, startY);
-      doc.text(`₦${Number(item.unit_price).toFixed(2)}`, 300, startY);
-      doc.text(`₦${Number(item.subtotal).toFixed(2)}`, 400, startY);
-      doc.moveDown(0.5);
+      const itemName = item.product_name || `SKU: ${item.product_sku}`;
+      const itemY = currentY;
+      totalItemsCount += item.quantity;
+
+      // Main item name
+      doc.font('Helvetica-Bold').text(itemName.toUpperCase(), margin, itemY, { width: 140 });
+      const mainTextHeight = doc.y - itemY;
+
+      // Price breakdown on next line
+      doc.font('Helvetica').fontSize(7).text(`${item.quantity} x ₦${Number(item.unit_price).toLocaleString()}`, margin, doc.y);
+
+      // Subtotal for this item (aligned to first line)
+      const itemSubtotal = `₦${Number(item.subtotal).toLocaleString()}`;
+      doc.font('Helvetica-Bold').fontSize(8).text(itemSubtotal, margin + 140, itemY, { width: 55, align: 'right' });
+
+      currentY = Math.max(doc.y, itemY + mainTextHeight + 10) + 5;
     });
 
-    doc.moveDown();
+    currentY = drawDivider(currentY);
 
     // Totals
-    doc.moveTo(300, doc.y).lineTo(500, doc.y).stroke();
-    doc.moveDown(0.3);
-    doc.text('Subtotal:', 300);
-    doc.text(`₦${Number(order.subtotal).toFixed(2)}`, 400);
-    doc.moveDown(0.3);
-    doc.text('Tax:', 300);
-    doc.text(`₦${Number(order.tax).toFixed(2)}`, 400);
-    doc.moveDown(0.3);
-    doc.fontSize(12).font('Helvetica-Bold');
-    doc.text('Total:', 300);
-    doc.text(`₦${Number(order.total).toFixed(2)}`, 400);
-    doc.font('Helvetica').fontSize(10);
-    doc.moveDown(2);
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Total Items: ${totalItemsCount}`, margin, currentY);
+    currentY = doc.y + 10;
 
-    // Payment Details
-    doc.fontSize(14).text('Payment Details', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10);
+    const drawTotalRow = (label: string, value: string, isBold = false) => {
+      if (isBold) doc.font('Helvetica-Bold').fontSize(10);
+      doc.text(label, margin + 80, currentY, { width: 60, align: 'left' });
+      doc.text(value, margin + 140, currentY, { width: 55, align: 'right' });
+      doc.font('Helvetica').fontSize(8);
+      currentY = doc.y + 5;
+    };
 
-    // Map payment method to display format
-    let paymentMethodDisplay = payment.payment_method.toUpperCase();
-    // Already using 'pos' in database, but handle legacy 'card' if exists
-    if (paymentMethodDisplay === 'CARD') {
-      paymentMethodDisplay = 'POS';
+    drawTotalRow('Subtotal:', `₦${Number(order.subtotal).toLocaleString()}`);
+    drawTotalRow('Tax (10%):', `₦${Number(order.tax).toLocaleString()}`);
+    currentY += 2;
+    drawTotalRow('TOTAL:', `₦${Number(order.total).toLocaleString()}`, true);
+
+    currentY += 10;
+    currentY = drawDivider(currentY);
+
+    // Payment Info
+    doc.font('Helvetica-Bold').fontSize(8).text('PAYMENT DETAILS', margin, currentY);
+    currentY = doc.y + 5;
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Method: ${payment.payment_method.toUpperCase()}`, margin, currentY);
+    doc.text(`Paid: ₦${Number(payment.amount).toLocaleString()}`, margin, doc.y + 2);
+    doc.text(`Cashier: ${payment.accountant_name || 'System'}`, margin, doc.y + 2);
+    doc.text(`Sales Rep: ${order.sales_rep_name || 'N/A'}`, margin, doc.y + 2);
+    currentY = doc.y + 10;
+
+    // Customer Notes (if any)
+    if (order.notes) {
+      doc.font('Helvetica-Bold').text('NOTES:', margin, currentY);
+      doc.font('Helvetica').fontSize(7).text(order.notes, margin, doc.y + 2, { width: contentWidth });
+      currentY = doc.y + 15;
+    } else {
+      currentY += 5;
     }
 
-    doc.text(`Payment Method: ${paymentMethodDisplay}`);
-    doc.text(`Amount Paid: ₦${Number(payment.amount).toFixed(2)}`);
-    doc.text(`Confirmed By: ${payment.accountant_name || 'N/A'}`);
-    doc.text(`Payment Date: ${payment.confirmed_at ? new Date(payment.confirmed_at).toLocaleString() : new Date().toLocaleString()}`);
-    doc.moveDown(2);
-
     // Footer
-    doc.fontSize(8).text('Thank you for your business!', { align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(9).text('THANK YOU FOR YOUR PATRONAGE!', margin, currentY, { align: 'center', width: contentWidth });
+    currentY = doc.y + 5;
+    doc.font('Helvetica').fontSize(7).text('Items once sold are not returnable. Thank you!', margin, currentY, { align: 'center', width: contentWidth });
 
     doc.end();
 
-    // Wait for PDF to be written
-    await new Promise((resolve) => {
-      doc.on('end', resolve);
-    });
-
-    // Return relative path for storage in database
+    await new Promise((resolve) => doc.on('end', resolve));
     return `receipts/${receiptNumber}.pdf`;
   }
 
@@ -166,7 +175,6 @@ export class ReceiptService {
       fs.mkdirSync(receiptsDir, { recursive: true });
     }
 
-    // Get settings
     const receiptName = (await SettingsModel.getSetting('receipt_name')) || 'Invoice';
     const storeAddress = await SettingsModel.getSetting('store_address');
     const storePhone = await SettingsModel.getSetting('store_phone');
@@ -175,123 +183,140 @@ export class ReceiptService {
     const activeAccountNumbers = accountNumbers.filter((acc) => acc.is_active);
 
     const filePath = path.join(receiptsDir, `${invoiceNumber}.pdf`);
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+    // POS width 80mm
+    const pageWidth = 226;
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
+
+    const doc = new PDFDocument({
+      size: [pageWidth, 900],
+      margin: margin
+    });
 
     doc.pipe(fs.createWriteStream(filePath));
 
-    // Watermark - PENDING (Low opacity)
+    // Watermark - PROFORMA
     doc.save();
-    doc.fontSize(100).fillColor('grey', 0.1).rotate(-45, { origin: [300, 400] });
-    doc.text('PENDING', 50, 400, { align: 'center' });
+    doc.fontSize(30).fillColor('grey', 0.1).rotate(-45, { origin: [113, 450] });
+    doc.text('PROFORMA', 0, 450, { align: 'center', width: pageWidth });
     doc.restore();
-
-    // Restore fill color for normal content
     doc.fillColor('black');
 
-    const pageWidth = doc.page.width;
-    const pageMargin = 50;
+    let currentY = margin;
 
+    // Logo
     if (logoPath) {
       const logoFilePath = path.join(process.cwd(), 'public', logoPath);
       if (fs.existsSync(logoFilePath)) {
         try {
-          const logoWidth = 100;
-          const logoHeight = 100;
-          const logoX = (pageWidth - logoWidth) / 2;
-          doc.image(logoFilePath, logoX, pageMargin, { width: logoWidth, height: logoHeight, fit: [logoWidth, logoHeight] });
-          doc.y = pageMargin + logoHeight + 20;
+          doc.image(logoFilePath, (pageWidth - 60) / 2, currentY, { width: 60 });
+          currentY += 70;
         } catch (error) {
           console.error('Failed to load logo:', error);
-          doc.y = pageMargin + 20;
         }
-      } else {
-        doc.y = pageMargin + 20;
       }
-    } else {
-      doc.y = pageMargin + 20;
     }
 
     // Header
-    doc.fontSize(24).text(receiptName.toUpperCase(), { align: 'center' });
-    if (storeAddress) doc.fontSize(10).text(storeAddress, { align: 'center' });
-    if (storePhone) doc.fontSize(10).text(`Tel: ${storePhone}`, { align: 'center' });
-    doc.moveDown();
-    doc.font('Helvetica-Bold').fontSize(12).text(`PROFORMA INVOICE`, { align: 'center' });
-    doc.font('Helvetica');
-    doc.text(`Invoice Number: ${invoiceNumber}`, { align: 'center' });
-    doc.text(`Date: ${new Date().toLocaleString()}`, { align: 'center' });
-    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').fontSize(14).text(receiptName.toUpperCase(), margin, currentY, { align: 'center', width: contentWidth });
+    currentY = doc.y + 2;
+    doc.font('Helvetica').fontSize(8);
+    if (storeAddress) doc.text(storeAddress, margin, currentY, { align: 'center', width: contentWidth });
+    if (storePhone) doc.text(`Tel: ${storePhone}`, margin, doc.y + 2, { align: 'center', width: contentWidth });
+    currentY = doc.y + 10;
 
-    // Status - PENDING
-    doc.fontSize(14).font('Helvetica-Bold').fillColor('#f59e0b');
-    doc.text('STATUS: PENDING / AWAITING PAYMENT', { align: 'center' });
-    doc.fillColor('black').font('Helvetica');
-    doc.moveDown();
+    const drawDivider = (y: number) => {
+      doc.moveTo(margin, y).lineTo(pageWidth - margin, y).dash(2, { space: 2 }).stroke().undash();
+      return y + 10;
+    };
 
-    // Order Details
-    doc.fontSize(14).text('Order Details', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10);
-    doc.text(`Order Number: ${order.order_number}`);
-    doc.text(`Customer: ${order.customer_name || 'Walk-in Customer'}`);
-    if (order.customer_email) doc.text(`Email: ${order.customer_email}`);
-    if (order.customer_phone) doc.text(`Phone: ${order.customer_phone}`);
-    doc.moveDown();
+    // Invoice Info
+    currentY = drawDivider(currentY);
+    doc.font('Helvetica-Bold').fontSize(9).text('PROFORMA INVOICE', margin, currentY, { align: 'center', width: contentWidth });
+    currentY = doc.y + 5;
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Invoice #: ${invoiceNumber}`, margin, currentY);
+    doc.text(`Date: ${new Date().toLocaleString()}`, margin, doc.y + 2);
+    doc.text(`Customer: ${order.customer_name || 'Walk-in'}`, margin, doc.y + 2);
+    currentY = doc.y + 10;
 
-    // Items Table
-    doc.fontSize(14).text('Items', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10);
-    doc.text('Item', 50, doc.y);
-    doc.text('Qty', 250, doc.y);
-    doc.text('Price', 300, doc.y);
-    doc.text('Subtotal', 400, doc.y);
-    doc.moveDown(0.3);
-    doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke();
-    doc.moveDown(0.3);
+    currentY = drawDivider(currentY);
 
+    // Items Header
+    doc.font('Helvetica-Bold').fontSize(8);
+    doc.text('ITEM DESCRIPTION', margin, currentY);
+    doc.text('TOTAL', margin + 140, currentY, { width: 55, align: 'right' });
+    currentY = doc.y + 5;
+
+    // Items List
+    doc.font('Helvetica').fontSize(8);
+    let totalItemsCount = 0;
     order.items.forEach((item) => {
-      const startY = doc.y;
-      doc.text(item.product_name || `SKU: ${item.product_sku}`, 50, startY);
-      doc.text(item.quantity.toString(), 250, startY);
-      doc.text(`₦${Number(item.unit_price).toFixed(2)}`, 300, startY);
-      doc.text(`₦${Number(item.subtotal).toFixed(2)}`, 400, startY);
-      doc.moveDown(0.5);
+      const startY = currentY;
+      totalItemsCount += item.quantity;
+
+      doc.font('Helvetica-Bold').text((item.product_name || `SKU: ${item.product_sku}`).toUpperCase(), margin, startY, { width: 140 });
+      const nameHeight = doc.y - startY;
+
+      doc.font('Helvetica').fontSize(7).text(`${item.quantity} x ₦${Number(item.unit_price).toLocaleString()}`, margin, doc.y);
+
+      doc.font('Helvetica-Bold').fontSize(8).text(`₦${Number(item.subtotal).toLocaleString()}`, margin + 140, startY, { width: 55, align: 'right' });
+
+      currentY = Math.max(doc.y, startY + nameHeight + 10) + 5;
     });
-    doc.moveDown();
+
+    currentY = drawDivider(currentY);
+
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Total Items: ${totalItemsCount}`, margin, currentY);
+    currentY = doc.y + 10;
 
     // Totals
-    doc.moveTo(300, doc.y).lineTo(500, doc.y).stroke();
-    doc.moveDown(0.3);
-    doc.text('Subtotal:', 300);
-    doc.text(`₦${Number(order.subtotal).toFixed(2)}`, 400);
-    doc.moveDown(0.3);
-    doc.text('Tax:', 300);
-    doc.text(`₦${Number(order.tax).toFixed(2)}`, 400);
-    doc.moveDown(0.3);
-    doc.fontSize(12).font('Helvetica-Bold');
-    doc.text('Total to Pay:', 300);
-    doc.text(`₦${Number(order.total).toFixed(2)}`, 400);
-    doc.font('Helvetica').fontSize(10);
-    doc.moveDown(2);
+    const drawTotalRow = (label: string, value: string, isBold = false) => {
+      if (isBold) doc.font('Helvetica-Bold').fontSize(10);
+      doc.text(label, margin + 80, currentY, { width: 60, align: 'left' });
+      doc.text(value, margin + 140, currentY, { width: 55, align: 'right' });
+      doc.font('Helvetica').fontSize(8);
+      currentY = doc.y + 5;
+    };
 
-    // Account Details
+    drawTotalRow('Subtotal:', `₦${Number(order.subtotal).toLocaleString()}`);
+    drawTotalRow('Tax (10%):', `₦${Number(order.tax).toLocaleString()}`);
+    currentY += 2;
+    drawTotalRow('TOTAL:', `₦${Number(order.total).toLocaleString()}`, true);
+
+    currentY += 10;
+    currentY = drawDivider(currentY);
+
+    // Banking Details
     if (activeAccountNumbers.length > 0) {
-      doc.fontSize(14).text('Payment Instructions', { underline: true });
-      doc.moveDown(0.5);
-      doc.fontSize(10).text('Please pay to any of the following accounts:');
-      doc.moveDown(0.3);
-      activeAccountNumbers.forEach((account) => {
-        doc.text(`${account.bank_name}: ${account.account_number} - ${account.account_name}`);
+      doc.font('Helvetica-Bold').fontSize(8).text('BANKING DETAILS', margin, currentY);
+      currentY = doc.y + 5;
+      doc.font('Helvetica').fontSize(7);
+      activeAccountNumbers.forEach((acc) => {
+        doc.text(`${acc.bank_name}: ${acc.account_number}`, margin, currentY);
+        doc.text(`Name: ${acc.account_name}`, margin, doc.y + 1);
+        currentY = doc.y + 5;
       });
-      doc.moveDown(1);
-      doc.font('Helvetica-BoldOblique').text('Kindly take this invoice to the Accountant after payment for confirmation.');
-      doc.font('Helvetica');
-      doc.moveDown(2);
+      currentY += 5;
+    }
+
+    // Sales Rep and Notes
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Sales Rep: ${order.sales_rep_name || 'N/A'}`, margin, currentY);
+    currentY = doc.y + 10;
+
+    if (order.notes) {
+      doc.font('Helvetica-Bold').text('NOTES:', margin, currentY);
+      doc.font('Helvetica').fontSize(7).text(order.notes, margin, doc.y + 2, { width: contentWidth });
+      currentY = doc.y + 15;
     }
 
     // Footer
-    doc.fontSize(8).text('This is a proforma invoice. Goods will be released upon payment confirmation.', { align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(8).text('AWAITING PAYMENT', margin, currentY, { align: 'center', width: contentWidth });
+    currentY = doc.y + 5;
+    doc.font('Helvetica').fontSize(7).text('Valid for 24 hours only.', margin, currentY, { align: 'center', width: contentWidth });
 
     doc.end();
 

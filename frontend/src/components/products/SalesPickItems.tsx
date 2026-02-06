@@ -163,8 +163,7 @@ const SalesPickItems = ({
                                             <span style={{ flex: 1, textAlign: 'center', fontWeight: '600' }}>{cartItem.quantity}</span>
                                             <button
                                                 onClick={() => updateSalesCartQuantity(product.id, cartItem.quantity + 1)}
-                                                disabled={cartItem.quantity >= product.quantity}
-                                                style={{ padding: '0.25rem 0.5rem', background: cartItem.quantity >= product.quantity ? '#9ca3af' : '#10b981', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: cartItem.quantity >= product.quantity ? 'not-allowed' : 'pointer' }}
+                                                style={{ padding: '0.25rem 0.5rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}
                                             >
                                                 <Plus size={16} />
                                             </button>
@@ -172,8 +171,7 @@ const SalesPickItems = ({
                                     ) : (
                                         <button
                                             onClick={() => addToSalesCart(product)}
-                                            disabled={product.quantity === 0}
-                                            style={{ padding: '0.5rem', background: product.quantity === 0 ? '#9ca3af' : '#dc2626', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: product.quantity === 0 ? 'not-allowed' : 'pointer', fontWeight: '500', marginTop: '0.5rem' }}
+                                            style={{ padding: '0.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500', marginTop: '0.5rem' }}
                                         >
                                             Add to Cart
                                         </button>
@@ -212,7 +210,7 @@ const SalesPickItems = ({
                                                     <Minus size={14} />
                                                 </button>
                                                 <span style={{ minWidth: '2rem', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</span>
-                                                <button onClick={() => updateSalesCartQuantity(item.product_id, item.quantity + 1)} disabled={item.quantity >= item.product.quantity} style={{ padding: '0.25rem 0.5rem', background: item.quantity >= item.product.quantity ? '#9ca3af' : '#10b981', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: item.quantity >= item.product.quantity ? 'not-allowed' : 'pointer' }}>
+                                                <button onClick={() => updateSalesCartQuantity(item.product_id, item.quantity + 1)} style={{ padding: '0.25rem 0.5rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}>
                                                     <Plus size={14} />
                                                 </button>
                                             </div>

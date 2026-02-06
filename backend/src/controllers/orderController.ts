@@ -31,12 +31,7 @@ export class OrderController {
           return;
         }
 
-        if (product.quantity < item.quantity) {
-          res.status(400).json({
-            error: `Insufficient stock for ${product.product_name}. Available: ${product.quantity}`,
-          });
-          return;
-        }
+        // Stock check removed as per request to allow out of stock items
 
         const unitPrice = product.price;
         const itemSubtotal = unitPrice * item.quantity;
@@ -218,12 +213,7 @@ export class OrderController {
             return;
           }
 
-          if (product.quantity < item.quantity) {
-            res.status(400).json({
-              error: `Insufficient stock for ${product.product_name}. Available: ${product.quantity}`,
-            });
-            return;
-          }
+          // Stock check removed as per request to allow out of stock items
 
           const unitPrice = product.price;
           const itemSubtotal = unitPrice * item.quantity;

@@ -815,7 +815,7 @@ const Orders = () => {
                 Add Products
               </label>
               <div style={{ display: 'grid', gap: '0.5rem', maxHeight: '200px', overflow: 'auto', marginBottom: '1rem' }}>
-                {products.filter((p) => p.quantity > 0).map((product) => (
+                {products.map((product) => (
                   <div
                     key={product.id}
                     style={{
@@ -835,14 +835,13 @@ const Orders = () => {
                     </div>
                     <button
                       onClick={() => addToCart(product.id)}
-                      disabled={product.quantity === 0}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: product.quantity === 0 ? 'var(--text-secondary)' : '#dc2626',
+                        background: '#dc2626',
                         color: 'white',
                         borderRadius: '0.5rem',
                         border: 'none',
-                        cursor: product.quantity === 0 ? 'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         fontSize: '0.875rem',
                       }}
                     >
@@ -894,14 +893,13 @@ const Orders = () => {
                         <span style={{ minWidth: '2rem', textAlign: 'center' }}>{item.quantity}</span>
                         <button
                           onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}
-                          disabled={product && item.quantity >= product.quantity}
                           style={{
                             padding: '0.25rem 0.5rem',
-                            background: product && item.quantity >= product.quantity ? 'var(--text-secondary)' : '#10b981',
+                            background: '#10b981',
                             color: 'white',
                             borderRadius: '0.25rem',
                             border: 'none',
-                            cursor: product && item.quantity >= product.quantity ? 'not-allowed' : 'pointer',
+                            cursor: 'pointer',
                           }}
                         >
                           +
@@ -1073,7 +1071,7 @@ const Orders = () => {
                 Add Products
               </label>
               <div style={{ display: 'grid', gap: '0.5rem', maxHeight: '200px', overflow: 'auto', marginBottom: '1rem' }}>
-                {products.filter((p) => p.quantity > 0).map((product) => (
+                {products.map((product) => (
                   <div
                     key={product.id}
                     style={{
@@ -1093,14 +1091,13 @@ const Orders = () => {
                     </div>
                     <button
                       onClick={() => addToCart(product.id)}
-                      disabled={product.quantity === 0}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: product.quantity === 0 ? 'var(--text-secondary)' : '#dc2626',
+                        background: '#dc2626',
                         color: 'white',
                         borderRadius: '0.5rem',
                         border: 'none',
-                        cursor: product.quantity === 0 ? 'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         fontSize: '0.875rem',
                       }}
                     >
@@ -1152,14 +1149,13 @@ const Orders = () => {
                         <span style={{ minWidth: '2rem', textAlign: 'center' }}>{item.quantity}</span>
                         <button
                           onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}
-                          disabled={product && item.quantity >= product.quantity}
                           style={{
                             padding: '0.25rem 0.5rem',
-                            background: product && item.quantity >= product.quantity ? 'var(--text-secondary)' : '#10b981',
+                            background: '#10b981',
                             color: 'white',
                             borderRadius: '0.25rem',
                             border: 'none',
-                            cursor: product && item.quantity >= product.quantity ? 'not-allowed' : 'pointer',
+                            cursor: 'pointer',
                           }}
                         >
                           +

@@ -124,5 +124,63 @@ export class ReportController {
       res.status(500).json({ error: error.message || 'Failed to fetch product sales report' });
     }
   }
+
+  static async getEndOfDayReport(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { date } = req.query;
+      const dateValue = date || null;
+
+      // 1. Summary Stats
+      const summaryQuery = `
+        SELECT 
+          COUNT(id) as total_orders,
+          SUM(total) as total_revenue,
+          SUM(subtotal) as subtotal,
+          SUM(tax) as total_tax
+        FROM orders 
+        WHERE status = 'paid' AND DATE(created_at) = ${dateValue ? '?' : 'CURDATE()'}
+      `;
+
+      // 2. Payment Method Breakdown
+      const paymentsQuery = `
+        SELECT 
+          payment_method,
+          COUNT(*) as count,
+          SUM(amount) as total_amount
+        FROM payments
+        WHERE payment_status = 'confirmed' AND DATE(created_at) = ${dateValue ? '?' : 'CURDATE()'}
+        GROUP BY payment_method
+      `;
+
+      // 3. Top Products Today
+      const topProductsQuery = `
+        SELECT 
+          p.product_name,
+          SUM(oi.quantity) as quantity_sold,
+          SUM(oi.subtotal) as revenue
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status = 'paid' AND DATE(o.created_at) = ${dateValue ? '?' : 'CURDATE()'}
+        GROUP BY p.id, p.product_name
+        ORDER BY quantity_sold DESC
+        LIMIT 10
+      `;
+
+      const params = dateValue ? [dateValue] : [];
+      const [summaryResult] = await pool.execute(summaryQuery, params);
+      const [paymentsResult] = await pool.execute(paymentsQuery, params);
+      const [topProductsResult] = await pool.execute(topProductsQuery, params);
+
+      res.json({
+        date: dateValue || new Date().toISOString().split('T')[0],
+        summary: (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0, total_tax: 0 },
+        payments: paymentsResult,
+        top_products: topProductsResult
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to fetch end-of-day report' });
+    }
+  }
 }
 
