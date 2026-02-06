@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 export class PaymentController {
   static async createPayment(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { order_id, payment_method, notes } = req.body;
+      const { order_id, payment_method, notes, pos_terminal_id, bank_account_id } = req.body;
 
       const order = await OrderModel.findById(order_id);
       if (!order) {
@@ -34,6 +34,8 @@ export class PaymentController {
         accountant_id: req.user!.id,
         amount: order.total,
         payment_method: payment_method || 'cash',
+        pos_terminal_id,
+        bank_account_id,
         notes,
       });
 

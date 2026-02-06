@@ -98,6 +98,64 @@ export class SettingsController {
     }
   }
 
+  // POS Terminals
+  static async getAllPOSTerminals(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const terminals = await SettingsModel.getAllPOSTerminals();
+      res.json(terminals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to fetch POS terminals' });
+    }
+  }
+
+  static async createPOSTerminal(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { bank_name, terminal_id } = req.body;
+
+      if (!bank_name || !terminal_id) {
+        res.status(400).json({ error: 'Bank name and terminal ID are required' });
+        return;
+      }
+
+      const id = await SettingsModel.createPOSTerminal({
+        bank_name,
+        terminal_id,
+      });
+
+      const terminal = await SettingsModel.getPOSTerminalById(id);
+      res.status(201).json(terminal);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to create POS terminal' });
+    }
+  }
+
+  static async updatePOSTerminal(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const updates: any = {};
+
+      if (req.body.bank_name !== undefined) updates.bank_name = req.body.bank_name;
+      if (req.body.terminal_id !== undefined) updates.terminal_id = req.body.terminal_id;
+      if (req.body.is_active !== undefined) updates.is_active = req.body.is_active;
+
+      await SettingsModel.updatePOSTerminal(parseInt(id), updates);
+      const terminal = await SettingsModel.getPOSTerminalById(parseInt(id));
+      res.json(terminal);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to update POS terminal' });
+    }
+  }
+
+  static async deletePOSTerminal(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      await SettingsModel.deletePOSTerminal(parseInt(id));
+      res.json({ message: 'POS terminal deleted successfully' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to delete POS terminal' });
+    }
+  }
+
   // System Settings
   static async getSettings(req: AuthRequest, res: Response): Promise<void> {
     try {

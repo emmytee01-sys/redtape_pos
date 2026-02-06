@@ -1,17 +1,24 @@
 import { useEffect, useState } from 'react';
-import { settingsService, AccountNumber, SystemSettings } from '../services/settingsService';
-import { Plus, Edit, Trash2, Save, Upload, X, CreditCard, FileText, Image } from 'lucide-react';
+import { settingsService, AccountNumber, POSTerminal, SystemSettings } from '../services/settingsService';
+import { Plus, Edit, Trash2, Save, Upload, X, CreditCard, FileText, Image, Tablet } from 'lucide-react';
 
 const Settings = () => {
   const [accountNumbers, setAccountNumbers] = useState<AccountNumber[]>([]);
+  const [posTerminals, setPOSTerminals] = useState<POSTerminal[]>([]);
   const [settings, setSettings] = useState<SystemSettings>({ receipt_name: '', logo_path: '', store_address: '', store_phone: '' });
   const [loading, setLoading] = useState(true);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showPOSModal, setShowPOSModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountNumber | null>(null);
+  const [editingPOS, setEditingPOS] = useState<POSTerminal | null>(null);
   const [accountForm, setAccountForm] = useState({
     account_number: '',
     account_name: '',
     bank_name: '',
+  });
+  const [posForm, setPOSForm] = useState({
+    bank_name: '',
+    terminal_id: '',
   });
   const [receiptName, setReceiptName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
@@ -25,11 +32,13 @@ const Settings = () => {
 
   const loadData = async () => {
     try {
-      const [accounts, systemSettings] = await Promise.all([
+      const [accounts, terminals, systemSettings] = await Promise.all([
         settingsService.getAccountNumbers(),
+        settingsService.getPOSTerminals(),
         settingsService.getSettings(),
       ]);
       setAccountNumbers(accounts);
+      setPOSTerminals(terminals);
       setSettings(systemSettings);
       setReceiptName(systemSettings.receipt_name || '');
       setStoreAddress(systemSettings.store_address || '');
@@ -82,6 +91,49 @@ const Settings = () => {
       alert('Account deleted successfully');
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to delete account');
+    }
+  };
+
+  const handleCreatePOS = async () => {
+    if (!posForm.bank_name || !posForm.terminal_id) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    try {
+      if (editingPOS) {
+        await settingsService.updatePOSTerminal(editingPOS.id, posForm);
+      } else {
+        await settingsService.createPOSTerminal(posForm);
+      }
+      loadData();
+      setShowPOSModal(false);
+      setEditingPOS(null);
+      setPOSForm({ bank_name: '', terminal_id: '' });
+      alert(editingPOS ? 'POS terminal updated successfully' : 'POS terminal created successfully');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to save POS terminal');
+    }
+  };
+
+  const handleEditPOS = (pos: POSTerminal) => {
+    setEditingPOS(pos);
+    setPOSForm({
+      bank_name: pos.bank_name,
+      terminal_id: pos.terminal_id,
+    });
+    setShowPOSModal(true);
+  };
+
+  const handleDeletePOS = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this POS terminal?')) return;
+
+    try {
+      await settingsService.deletePOSTerminal(id);
+      loadData();
+      alert('POS terminal deleted successfully');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to delete POS terminal');
     }
   };
 
@@ -249,6 +301,134 @@ const Settings = () => {
                   </button>
                   <button
                     onClick={() => handleDeleteAccount(account.id)}
+                    style={{
+                      padding: '0.5rem',
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title="Delete"
+                  >
+                    <Trash2 size={16} color="#ef4444" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* POS Terminals Section */}
+      <div
+        style={{
+          background: 'var(--surface)',
+          padding: '2rem',
+          borderRadius: '0.75rem',
+          boxShadow: 'var(--shadow)',
+          border: '1px solid var(--border)',
+          marginBottom: '2rem',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Tablet size={24} color="#dc2626" />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '600' }}>POS Terminals</h2>
+          </div>
+          <button
+            onClick={() => {
+              setEditingPOS(null);
+              setPOSForm({ bank_name: '', terminal_id: '' });
+              setShowPOSModal(true);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              background: '#dc2626',
+              color: 'white',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '500',
+            }}
+          >
+            <Plus size={18} />
+            Add POS Terminal
+          </button>
+        </div>
+
+        {posTerminals.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+            <Tablet size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+            <p>No POS terminals added yet</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {posTerminals.map((pos) => (
+              <div
+                key={pos.id}
+                style={{
+                  padding: '1.5rem',
+                  background: 'var(--background)',
+                  borderRadius: '0.5rem',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                        Bank Name
+                      </div>
+                      <div style={{ fontWeight: '600', fontSize: '1.125rem' }}>{pos.bank_name}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                        Terminal ID/Last 4 Digits
+                      </div>
+                      <div style={{ fontWeight: '600' }}>{pos.terminal_id}</div>
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          background: pos.is_active ? '#d1fae5' : '#fee2e2',
+                          color: pos.is_active ? '#065f46' : '#991b1b',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {pos.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleEditPOS(pos)}
+                    style={{
+                      padding: '0.5rem',
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title="Edit"
+                  >
+                    <Edit size={16} color="#2563eb" />
+                  </button>
+                  <button
+                    onClick={() => handleDeletePOS(pos.id)}
                     style={{
                       padding: '0.5rem',
                       background: 'transparent',
@@ -604,6 +784,131 @@ const Settings = () => {
                 }}
               >
                 {editingAccount ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add/Edit POS Modal */}
+      {showPOSModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => {
+            setShowPOSModal(false);
+            setEditingPOS(null);
+            setPOSForm({ bank_name: '', terminal_id: '' });
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              padding: '2rem',
+              borderRadius: '0.75rem',
+              maxWidth: '500px',
+              width: '90%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>
+                {editingPOS ? 'Edit POS Terminal' : 'Add POS Terminal'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowPOSModal(false);
+                  setEditingPOS(null);
+                  setPOSForm({ bank_name: '', terminal_id: '' });
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Bank Name *
+                </label>
+                <input
+                  type="text"
+                  value={posForm.bank_name}
+                  onChange={(e) => setPOSForm({ ...posForm, bank_name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                  }}
+                  placeholder="e.g., Zenith Bank"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Terminal ID/Last 4 Digits *
+                </label>
+                <input
+                  type="text"
+                  value={posForm.terminal_id}
+                  onChange={(e) => setPOSForm({ ...posForm, terminal_id: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                  }}
+                  placeholder="e.g., 4321"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                onClick={() => {
+                  setShowPOSModal(false);
+                  setEditingPOS(null);
+                  setPOSForm({ bank_name: '', terminal_id: '' });
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'var(--background)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreatePOS}
+                disabled={!posForm.bank_name || !posForm.terminal_id}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: !posForm.bank_name || !posForm.terminal_id ? 'var(--text-secondary)' : '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: !posForm.bank_name || !posForm.terminal_id ? 'not-allowed' : 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                {editingPOS ? 'Update' : 'Create'}
               </button>
             </div>
           </div>

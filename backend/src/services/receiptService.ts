@@ -141,7 +141,19 @@ export class ReceiptService {
     doc.font('Helvetica-Bold').fontSize(8).text('PAYMENT DETAILS', margin, currentY);
     currentY = doc.y + 5;
     doc.font('Helvetica').fontSize(8);
-    doc.text(`Method: ${payment.payment_method.toUpperCase()}`, margin, currentY);
+    let methodLabel = payment.payment_method.toUpperCase();
+    let methodValue = '';
+
+    if (payment.payment_method === 'pos' && payment.pos_bank_name) {
+      methodValue = `${payment.pos_bank_name} (${payment.pos_terminal_number})`;
+    } else if (payment.payment_method === 'bank_transfer' && payment.bank_name) {
+      methodValue = `${payment.bank_name} - ${payment.bank_account_number}`;
+    }
+
+    doc.text(`Method: ${methodLabel}`, margin, currentY);
+    if (methodValue) {
+      doc.text(`Detail: ${methodValue}`, margin, doc.y + 2);
+    }
     doc.text(`Paid: ₦${Number(payment.amount).toLocaleString()}`, margin, doc.y + 2);
     doc.text(`Cashier: ${payment.accountant_name || 'System'}`, margin, doc.y + 2);
     doc.text(`Sales Rep: ${order.sales_rep_name || 'N/A'}`, margin, doc.y + 2);

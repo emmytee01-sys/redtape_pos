@@ -27,6 +27,8 @@ export const paymentService = {
   create: async (payment: {
     order_id: number;
     payment_method?: string;
+    pos_terminal_id?: number;
+    bank_account_id?: number;
     notes?: string;
   }): Promise<Payment> => {
     const response = await api.post<Payment>('/payments', payment);

@@ -10,6 +10,15 @@ export interface AccountNumber {
   updated_at: string;
 }
 
+export interface POSTerminal {
+  id: number;
+  bank_name: string;
+  terminal_id: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SystemSettings {
   receipt_name: string;
   logo_path: string;
@@ -48,6 +57,36 @@ export const settingsService = {
 
   deleteAccountNumber: async (id: number): Promise<void> => {
     await api.delete(`/settings/account-numbers/${id}`);
+  },
+
+  // POS Terminals
+  getPOSTerminals: async (): Promise<POSTerminal[]> => {
+    const response = await api.get<POSTerminal[]>('/settings/pos-terminals');
+    return response.data;
+  },
+
+  createPOSTerminal: async (data: {
+    bank_name: string;
+    terminal_id: string;
+  }): Promise<POSTerminal> => {
+    const response = await api.post<POSTerminal>('/settings/pos-terminals', data);
+    return response.data;
+  },
+
+  updatePOSTerminal: async (
+    id: number,
+    data: Partial<{
+      bank_name: string;
+      terminal_id: string;
+      is_active: boolean;
+    }>
+  ): Promise<POSTerminal> => {
+    const response = await api.put<POSTerminal>(`/settings/pos-terminals/${id}`, data);
+    return response.data;
+  },
+
+  deletePOSTerminal: async (id: number): Promise<void> => {
+    await api.delete(`/settings/pos-terminals/${id}`);
   },
 
   // System Settings

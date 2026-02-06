@@ -10,6 +10,15 @@ export interface AccountNumber {
   updated_at: Date;
 }
 
+export interface POSTerminal {
+  id: number;
+  bank_name: string;
+  terminal_id: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface SystemSetting {
   id: number;
   setting_key: string;
@@ -71,6 +80,59 @@ export class SettingsModel {
 
   static async deleteAccountNumber(id: number): Promise<boolean> {
     await pool.execute('DELETE FROM account_numbers WHERE id = ?', [id]);
+    return true;
+  }
+
+  // POS Terminals
+  static async getAllPOSTerminals(): Promise<POSTerminal[]> {
+    const [rows] = await pool.execute('SELECT * FROM pos_terminals ORDER BY created_at DESC');
+    return rows as POSTerminal[];
+  }
+
+  static async getPOSTerminalById(id: number): Promise<POSTerminal | null> {
+    const [rows] = await pool.execute('SELECT * FROM pos_terminals WHERE id = ?', [id]);
+    const terminals = rows as POSTerminal[];
+    return terminals.length > 0 ? terminals[0] : null;
+  }
+
+  static async createPOSTerminal(data: {
+    bank_name: string;
+    terminal_id: string;
+  }): Promise<number> {
+    const [result] = await pool.execute(
+      'INSERT INTO pos_terminals (bank_name, terminal_id) VALUES (?, ?)',
+      [data.bank_name, data.terminal_id]
+    );
+    return (result as any).insertId;
+  }
+
+  static async updatePOSTerminal(
+    id: number,
+    updates: Partial<{
+      bank_name: string;
+      terminal_id: string;
+      is_active: boolean;
+    }>
+  ): Promise<boolean> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    });
+
+    if (fields.length === 0) return false;
+
+    values.push(id);
+    await pool.execute(`UPDATE pos_terminals SET ${fields.join(', ')} WHERE id = ?`, values);
+    return true;
+  }
+
+  static async deletePOSTerminal(id: number): Promise<boolean> {
+    await pool.execute('DELETE FROM pos_terminals WHERE id = ?', [id]);
     return true;
   }
 

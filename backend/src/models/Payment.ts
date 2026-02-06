@@ -7,6 +7,8 @@ export interface Payment {
   amount: number;
   payment_method: 'cash' | 'pos' | 'bank_transfer' | 'other';
   payment_status: 'pending' | 'confirmed' | 'refunded';
+  pos_terminal_id: number | null;
+  bank_account_id: number | null;
   confirmed_at: Date | null;
   notes: string | null;
   created_at: Date;
@@ -17,6 +19,11 @@ export interface PaymentWithDetails extends Payment {
   order_number?: string;
   accountant_name?: string;
   customer_name?: string;
+  pos_bank_name?: string;
+  pos_terminal_number?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
+  bank_name?: string;
 }
 
 export class PaymentModel {
@@ -25,16 +32,20 @@ export class PaymentModel {
     accountant_id: number;
     amount: number;
     payment_method?: 'cash' | 'pos' | 'bank_transfer' | 'other';
+    pos_terminal_id?: number;
+    bank_account_id?: number;
     notes?: string;
   }): Promise<number> {
     const [result] = await pool.execute(
-      `INSERT INTO payments (order_id, accountant_id, amount, payment_method, notes) 
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO payments (order_id, accountant_id, amount, payment_method, pos_terminal_id, bank_account_id, notes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         paymentData.order_id,
         paymentData.accountant_id,
         paymentData.amount,
         paymentData.payment_method || 'cash',
+        paymentData.pos_terminal_id || null,
+        paymentData.bank_account_id || null,
         paymentData.notes || null,
       ]
     );
@@ -43,10 +54,14 @@ export class PaymentModel {
 
   static async findById(id: number): Promise<PaymentWithDetails | null> {
     const [rows] = await pool.execute(
-      `SELECT p.*, o.order_number, o.customer_name, u.full_name as accountant_name 
+      `SELECT p.*, o.order_number, o.customer_name, u.full_name as accountant_name,
+              pt.bank_name as pos_bank_name, pt.terminal_id as pos_terminal_number,
+              an.account_name as bank_account_name, an.account_number as bank_account_number, an.bank_name as bank_name
        FROM payments p 
        JOIN orders o ON p.order_id = o.id 
        LEFT JOIN users u ON p.accountant_id = u.id 
+       LEFT JOIN pos_terminals pt ON p.pos_terminal_id = pt.id
+       LEFT JOIN account_numbers an ON p.bank_account_id = an.id
        WHERE p.id = ?`,
       [id]
     );
@@ -56,10 +71,14 @@ export class PaymentModel {
 
   static async findByOrderId(orderId: number): Promise<PaymentWithDetails | null> {
     const [rows] = await pool.execute(
-      `SELECT p.*, o.order_number, o.customer_name, u.full_name as accountant_name 
+      `SELECT p.*, o.order_number, o.customer_name, u.full_name as accountant_name,
+              pt.bank_name as pos_bank_name, pt.terminal_id as pos_terminal_number,
+              an.account_name as bank_account_name, an.account_number as bank_account_number, an.bank_name as bank_name
        FROM payments p 
        JOIN orders o ON p.order_id = o.id 
        LEFT JOIN users u ON p.accountant_id = u.id 
+       LEFT JOIN pos_terminals pt ON p.pos_terminal_id = pt.id
+       LEFT JOIN account_numbers an ON p.bank_account_id = an.id
        WHERE p.order_id = ?`,
       [orderId]
     );
