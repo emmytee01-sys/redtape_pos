@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { reportService, SalesReport, ProductSalesReport, EndOfDayReport } from '../services/reportService';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -107,7 +108,7 @@ const Reports = () => {
                       cy="50%"
                       outerRadius={50}
                     >
-                      {endOfDayReport.payments.map((_, index) => (
+                      {endOfDayReport.payments.map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -122,7 +123,7 @@ const Reports = () => {
             <div style={{ background: 'var(--background)', padding: '1.25rem', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Top Items Today</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {endOfDayReport.top_products.slice(0, 5).map((p, i) => (
+                {endOfDayReport.top_products.slice(0, 5).map((p: any, i: number) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
                     <span style={{ color: 'var(--text)', fontWeight: '500' }}>{p.product_name}</span>
                     <span style={{ color: 'var(--text-secondary)' }}>{p.quantity_sold} sold</span>
@@ -265,7 +266,7 @@ const Reports = () => {
             </tr>
           </thead>
           <tbody>
-            {productReport.map((item) => (
+            {productReport.map((item: any) => (
               <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '1rem' }}>{item.product_name}</td>
                 <td style={{ padding: '1rem' }}>{item.category}</td>
