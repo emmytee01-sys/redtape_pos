@@ -32,14 +32,24 @@ const Payments = () => {
       setPayments(paymentsData);
 
       if (isAccountant) {
-        const [ordersData, terminals, accounts] = await Promise.all([
-          orderService.getAll({ status: 'submitted' }),
-          settingsService.getPOSTerminals(),
-          settingsService.getAccountNumbers()
-        ]);
-        setOrders(ordersData);
-        setPOSTerminals(terminals.filter(t => t.is_active));
-        setBankAccounts(accounts.filter(a => a.is_active));
+        try {
+          const ordersData = await orderService.getAll({ status: 'submitted' });
+          setOrders(ordersData);
+        } catch (err) {
+          console.error('Failed to load orders:', err);
+        }
+
+        try {
+          const [terminals, accounts] = await Promise.all([
+            settingsService.getPOSTerminals(),
+            settingsService.getAccountNumbers()
+          ]);
+          setPOSTerminals(terminals.filter(t => t.is_active));
+          setBankAccounts(accounts.filter(a => a.is_active));
+        } catch (err) {
+          console.error('Failed to load POS/Bank settings:', err);
+          // Don't block the rest of the page if these fail
+        }
       }
     } catch (error) {
       console.error('Failed to load payment data:', error);
@@ -104,7 +114,6 @@ const Payments = () => {
         {isAccountant ? 'Payment Confirmation' : 'Payments'}
       </h1>
 
-      {/* Submitted Orders (Pending) */}
       {isAccountant && orders.length > 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
@@ -146,6 +155,17 @@ const Payments = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {isAccountant && orders.length === 0 && (
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
+            Pending Payment Confirmation
+          </h2>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '0.75rem', border: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            No orders pending payment confirmation
           </div>
         </div>
       )}

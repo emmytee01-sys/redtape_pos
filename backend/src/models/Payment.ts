@@ -92,10 +92,14 @@ export class PaymentModel {
     startDate?: Date;
     endDate?: Date;
   }): Promise<PaymentWithDetails[]> {
-    let query = `SELECT p.*, o.order_number, o.customer_name, u.full_name as accountant_name 
+    let query = `SELECT p.*, o.order_number, o.customer_name, u.full_name as accountant_name,
+                  pt.bank_name as pos_bank_name, pt.terminal_id as pos_terminal_number,
+                  an.account_name as bank_account_name, an.account_number as bank_account_number, an.bank_name as bank_name
                  FROM payments p 
                  JOIN orders o ON p.order_id = o.id 
                  LEFT JOIN users u ON p.accountant_id = u.id 
+                 LEFT JOIN pos_terminals pt ON p.pos_terminal_id = pt.id
+                 LEFT JOIN account_numbers an ON p.bank_account_id = an.id
                  WHERE 1=1`;
     const params: any[] = [];
 
