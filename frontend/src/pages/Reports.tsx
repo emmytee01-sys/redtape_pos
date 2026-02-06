@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { reportService, SalesReport, ProductSalesReport, EndOfDayReport } from '../services/reportService';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { FileText, Download } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -45,6 +46,34 @@ const Reports = () => {
     loadReports();
   };
 
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const blob = await reportService.exportEndOfDayPDF(eodDate);
+      downloadFile(blob, `EndOfDay_Report_${eodDate}.pdf`);
+    } catch (error) {
+      alert('Failed to download PDF report');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const blob = await reportService.exportEndOfDayExcel(eodDate);
+      downloadFile(blob, `EndOfDay_Report_${eodDate}.xlsx`);
+    } catch (error) {
+      alert('Failed to download Excel report');
+    }
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>;
   }
@@ -66,16 +95,58 @@ const Reports = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>End of Day Summary</h2>
-          <input
-            type="date"
-            value={eodDate}
-            onChange={(e) => handleEodDateChange(e.target.value)}
-            style={{
-              padding: '0.5rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0.5rem',
-            }}
-          />
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleExportPDF}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'var(--background)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                }}
+                title="Download PDF"
+              >
+                <FileText size={18} color="#dc2626" />
+                PDF
+              </button>
+              <button
+                onClick={handleExportExcel}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'var(--background)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                }}
+                title="Download Excel"
+              >
+                <Download size={18} color="#16a34a" />
+                Excel
+              </button>
+            </div>
+            <input
+              type="date"
+              value={eodDate}
+              onChange={(e) => handleEodDateChange(e.target.value)}
+              style={{
+                padding: '0.5rem',
+                border: '1px solid var(--border)',
+                borderRadius: '0.5rem',
+              }}
+            />
+          </div>
         </div>
 
         {endOfDayReport ? (

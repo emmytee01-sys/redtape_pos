@@ -72,5 +72,21 @@ export const reportService = {
     });
     return response.data;
   },
+
+  exportEndOfDayPDF: async (date?: string): Promise<Blob> => {
+    const response = await api.get('/reports/export-end-of-day-pdf', {
+      params: { date },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  exportEndOfDayExcel: async (date?: string): Promise<Blob> => {
+    const response = await api.get('/reports/export-end-of-day-excel', {
+      params: { date },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
