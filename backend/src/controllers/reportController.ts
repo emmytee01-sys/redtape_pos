@@ -222,8 +222,8 @@ export class ReportController {
       doc.text(`Total Orders: ${summary.total_orders || 0}`);
       doc.text(`Subtotal: ₦${Number(summary.subtotal || 0).toLocaleString()}`);
       doc.text(`Total Tax: ₦${Number(summary.total_tax || 0).toLocaleString()}`);
-      doc.fontSize(14).fillColor('#dc2626').text(`Total Revenue: ₦${Number(summary.total_revenue || 0).toLocaleString()}`, { weight: 'bold' });
-      doc.fillColor('black');
+      doc.fontSize(14).fillColor('#dc2626').font('Helvetica-Bold').text(`Total Revenue: ₦${Number(summary.total_revenue || 0).toLocaleString()}`);
+      doc.fillColor('black').font('Helvetica');
       doc.moveDown();
 
       // Payments Section
