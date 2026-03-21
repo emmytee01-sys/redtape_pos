@@ -318,5 +318,52 @@ export class ReportController {
       res.status(500).json({ error: 'Failed to generate Excel report' });
     }
   }
+
+  static async exportEndOfDayCSV(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { date } = req.query;
+      const dateValue = (date as string) || new Date().toISOString().split('T')[0];
+
+      // Fetch data
+      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal, SUM(tax) as total_tax FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
+      const paymentsQuery = `SELECT payment_method, COUNT(*) as count, SUM(amount) as total_amount FROM payments WHERE payment_status = 'confirmed' AND DATE(created_at) = ? GROUP BY payment_method`;
+      const topProductsQuery = `SELECT p.product_name, SUM(oi.quantity) as quantity_sold, SUM(oi.subtotal) as revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status = 'paid' AND DATE(o.created_at) = ? GROUP BY p.id, p.product_name ORDER BY quantity_sold DESC`;
+
+      const [summaryResult] = await pool.execute(summaryQuery, [dateValue]);
+      const [paymentsResult] = await pool.execute(paymentsQuery, [dateValue]);
+      const [topProductsResult] = await pool.execute(topProductsQuery, [dateValue]);
+
+      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0, total_tax: 0 };
+      const payments = paymentsResult as any[];
+      const topProducts = topProductsResult as any[];
+
+      // Create CSV content
+      let csvContent = `End of Day Report,${dateValue}\n\n`;
+      csvContent += 'Financial Summary\n';
+      csvContent += `Total Orders,${summary.total_orders}\n`;
+      csvContent += `Subtotal,${Number(summary.subtotal)}\n`;
+      csvContent += `Total Tax,${Number(summary.total_tax)}\n`;
+      csvContent += `Total Revenue,${Number(summary.total_revenue)}\n\n`;
+
+      csvContent += 'Payment Breakdown\n';
+      csvContent += 'Payment Method,Transaction Count,Total Amount\n';
+      payments.forEach(p => {
+        csvContent += `${p.payment_method.toUpperCase()},${p.count},${Number(p.total_amount)}\n`;
+      });
+
+      csvContent += '\nTop Products Sold\n';
+      csvContent += 'Product Name,Quantity Sold,Revenue\n';
+      topProducts.forEach(p => {
+        csvContent += `"${p.product_name}",${p.quantity_sold},${Number(p.revenue)}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=EndOfDay_Report_${dateValue}.csv`);
+      res.send(csvContent);
+    } catch (error: any) {
+      console.error('CSV Export Error:', error);
+      res.status(500).json({ error: 'Failed to generate CSV report' });
+    }
+  }
 }
 

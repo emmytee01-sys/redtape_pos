@@ -12,6 +12,7 @@ router.get('/products', ReportController.getProductSalesReport);
 router.get('/end-of-day', ReportController.getEndOfDayReport);
 router.get('/export-end-of-day-pdf', ReportController.exportEndOfDayPDF);
 router.get('/export-end-of-day-excel', ReportController.exportEndOfDayExcel);
+router.get('/export-end-of-day-csv', ReportController.exportEndOfDayCSV);
 
 export default router;
 

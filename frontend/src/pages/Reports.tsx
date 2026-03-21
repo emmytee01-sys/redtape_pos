@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { reportService, SalesReport, ProductSalesReport, EndOfDayReport } from '../services/reportService';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, Printer, FileSpreadsheet } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -74,16 +74,63 @@ const Reports = () => {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const blob = await reportService.exportEndOfDayCSV(eodDate);
+      downloadFile(blob, `EndOfDay_Report_${eodDate}.csv`);
+    } catch (error) {
+      alert('Failed to download CSV report');
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>;
   }
 
   return (
     <div>
-      <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Reports</h1>
+      <style>
+        {`
+          @media print {
+            .hide-on-print, 
+            nav, 
+            aside, 
+            button, 
+            input,
+            .recharts-responsive-container {
+              display: none !important;
+            }
+            body {
+              background: white !important;
+              color: black !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            .print-only {
+              display: block !important;
+            }
+            .printable-content {
+              width: 100% !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+          }
+          .print-only {
+            display: none;
+          }
+        `}
+      </style>
+      <h1 className="hide-on-print" style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Reports</h1>
 
       {/* End of Day Summary */}
       <div
+        className="printable-content"
         style={{
           background: 'var(--surface)',
           padding: '1.5rem',
@@ -93,6 +140,10 @@ const Reports = () => {
           marginBottom: '2rem',
         }}
       >
+        <div className="print-only" style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: '800' }}>End of Day Report</h1>
+          <p style={{ fontSize: '1.125rem' }}>{eodDate}</p>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>End of Day Summary</h2>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -132,8 +183,47 @@ const Reports = () => {
                 }}
                 title="Download Excel"
               >
-                <Download size={18} color="#16a34a" />
+                <FileSpreadsheet size={18} color="#16a34a" />
                 Excel
+              </button>
+              <button
+                onClick={handleExportCSV}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'var(--background)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                }}
+                title="Download CSV"
+              >
+                <Download size={18} color="#2563eb" />
+                CSV
+              </button>
+              <button
+                onClick={handlePrint}
+                className="hide-on-print"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'var(--background)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                }}
+                title="Print Report"
+              >
+                <Printer size={18} color="#4b5563" />
+                Print
               </button>
             </div>
             <input

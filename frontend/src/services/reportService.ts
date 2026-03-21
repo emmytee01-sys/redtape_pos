@@ -88,5 +88,13 @@ export const reportService = {
     });
     return response.data;
   },
+
+  exportEndOfDayCSV: async (date?: string): Promise<Blob> => {
+    const response = await api.get('/reports/export-end-of-day-csv', {
+      params: { date },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
