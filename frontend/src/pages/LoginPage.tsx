@@ -211,32 +211,6 @@ const LoginPage = () => {
           </button>
         </form>
 
-        <div
-          style={{
-            marginTop: '1.5rem',
-            paddingTop: '1.5rem',
-            borderTop: '1px solid #e5e7eb',
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            color: '#6b7280',
-          }}
-        >
-          <p style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.8125rem' }}>Demo Credentials</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <p style={{ margin: 0 }}>
-            <strong>Admin:</strong> admin / password123
-          </p>
-            <p style={{ margin: 0 }}>
-            <strong>Manager:</strong> manager / password123
-          </p>
-            <p style={{ margin: 0 }}>
-            <strong>Sales Rep:</strong> sales1 / password123
-          </p>
-            <p style={{ margin: 0 }}>
-            <strong>Accountant:</strong> accountant / password123
-          </p>
-          </div>
-        </div>
       </div>
 
       {/* Powered By section - Footer at bottom of page */}
