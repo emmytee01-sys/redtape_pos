@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { orderService, Order } from '../services/orderService';
 import { productService, Product } from '../services/productService';
 import { authService } from '../services/authService';
-import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye, Printer } from 'lucide-react';
+import { settingsService, AccountNumber, POSTerminal } from '../services/settingsService';
+import { paymentService } from '../services/paymentService';
+import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye, Printer, AlertCircle as AlertIcon } from 'lucide-react';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -21,12 +23,20 @@ const Orders = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [posTerminals, setPOSTerminals] = useState<POSTerminal[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<AccountNumber[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | 'bank_transfer' | 'other'>('cash');
+  const [selectedPOS, setSelectedPOS] = useState<string>('');
+  const [selectedBank, setSelectedBank] = useState<string>('');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
 
   const user = authService.getCurrentUser();
   const canCreate = user?.role === 'sales_rep' || user?.role === 'admin' || user?.role === 'manager';
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
   const isAccountant = user?.role === 'accountant';
   const isSalesRep = user?.role === 'sales_rep';
+  const isAccountantOrAdmin = user?.role === 'accountant' || user?.role === 'admin';
 
   useEffect(() => {
     loadOrders();
@@ -34,6 +44,25 @@ const Orders = () => {
       loadProducts();
     }
   }, [statusFilter, startDate, endDate]);
+
+  useEffect(() => {
+    if (isAccountantOrAdmin) {
+      loadSettings();
+    }
+  }, [isAccountantOrAdmin]);
+
+  const loadSettings = async () => {
+    try {
+      const [terminals, accounts] = await Promise.all([
+        settingsService.getPOSTerminals(),
+        settingsService.getAccountNumbers()
+      ]);
+      setPOSTerminals(terminals.filter(t => t.is_active));
+      setBankAccounts(accounts.filter(a => a.is_active));
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
 
   const loadOrders = async () => {
     try {
@@ -216,6 +245,49 @@ const Orders = () => {
 
   const canDeleteOrder = (order: Order) => {
     return isSalesRep && order.status === 'pending' && order.sales_rep_id === user?.id;
+  };
+
+  const handleOpenPaymentConfirmation = (order: Order) => {
+    setSelectedOrder(order);
+    setShowViewModal(true);
+    setShowPaymentOptions(false); // Start with summary, not options
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!selectedOrder) return;
+    
+    try {
+      // Find the payment record for this order (it should be 'pending')
+      const pendingPayments = await paymentService.getAll({ 
+        payment_status: 'pending' 
+      });
+      
+      const payment = pendingPayments.find(p => p.order_id === selectedOrder.id);
+      
+      if (!payment) {
+        alert('No pending payment record found for this order. It might have been already confirmed or deleted.');
+        return;
+      }
+
+      await paymentService.confirm(payment.id, {
+        payment_method: paymentMethod,
+        pos_terminal_id: paymentMethod === 'pos' ? parseInt(selectedPOS) : undefined,
+        bank_account_id: paymentMethod === 'bank_transfer' ? parseInt(selectedBank) : undefined,
+        notes: paymentNotes,
+      });
+
+      alert('Payment confirmed! Receipt generated.');
+      await loadOrders();
+      setShowViewModal(false);
+      setSelectedOrder(null);
+      setShowPaymentOptions(false);
+      setPaymentMethod('cash');
+      setSelectedPOS('');
+      setSelectedBank('');
+      setPaymentNotes('');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to process payment');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -694,8 +766,32 @@ const Orders = () => {
                           </button>
                         )}
 
-                        {/* Status label for submitted orders - only for non-sales reps to avoid clutter since sales reps have the button */}
-                        {order.status === 'submitted' && !isSalesRep && (
+                        {/* Confirm Payment button for submitted orders - only for accountants and admins */}
+                        {order.status === 'submitted' && isAccountantOrAdmin && (
+                          <button
+                            onClick={() => handleOpenPaymentConfirmation(order)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.5rem 0.75rem',
+                              background: '#10b981',
+                              color: 'white',
+                              borderRadius: '0.5rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                            }}
+                            title="Confirm Payment"
+                          >
+                            <DollarSign size={14} />
+                            Confirm Payment
+                          </button>
+                        )}
+
+                        {/* Status label for submitted orders - only for sales reps to avoid clutter */}
+                        {order.status === 'submitted' && isSalesRep && (
                           <span style={{ fontSize: '0.75rem', color: '#1e40af', padding: '0.5rem' }}>
                             Awaiting Payment
                           </span>
@@ -1367,17 +1463,66 @@ const Orders = () => {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {/* Payment Options (Show only if accountant/admin wants to confirm) */}
+            {showPaymentOptions && (
+              <div style={{ padding: '1.5rem', background: '#fef2f2', borderRadius: '0.75rem', border: '1px solid #fee2e2', marginBottom: '1.5rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <DollarSign size={18} /> Payment Processing
+                </h4>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Payment Method *</label>
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', background: 'white' }}>
+                    <option value="cash">Cash</option>
+                    <option value="pos">POS</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {paymentMethod === 'pos' && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Select POS Terminal *</label>
+                    <select value={selectedPOS} onChange={(e) => setSelectedPOS(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', background: 'white' }}>
+                      <option value="">Select POS</option>
+                      {posTerminals.map(pos => (
+                        <option key={pos.id} value={String(pos.id)}>{pos.bank_name} ({pos.terminal_id})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {paymentMethod === 'bank_transfer' && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Select Bank Account *</label>
+                    <select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', background: 'white' }}>
+                      <option value="">Select Account</option>
+                      {bankAccounts.map(acc => (
+                        <option key={acc.id} value={String(acc.id)}>{acc.bank_name} - {acc.account_number}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '0' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Payment Notes (Optional)</label>
+                  <textarea value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} rows={2} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', resize: 'vertical' }} placeholder="Add any notes about this payment" />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
               <button
                 onClick={() => {
                   setShowViewModal(false);
                   setSelectedOrder(null);
+                  setShowPaymentOptions(false);
                 }}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  background: '#dc2626',
-                  color: 'white',
-                  border: 'none',
+                  background: 'var(--background)',
+                  color: 'var(--text)',
+                  border: '1px solid var(--border)',
                   borderRadius: '0.5rem',
                   cursor: 'pointer',
                   fontWeight: '500',
@@ -1385,6 +1530,50 @@ const Orders = () => {
               >
                 Close
               </button>
+
+              {selectedOrder.status === 'submitted' && isAccountantOrAdmin && !showPaymentOptions && (
+                <button
+                  onClick={() => setShowPaymentOptions(true)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  Confirm Payment
+                </button>
+              )}
+
+              {showPaymentOptions && (
+                <button
+                  onClick={handleConfirmPayment}
+                  disabled={
+                    (paymentMethod === 'pos' && !selectedPOS) ||
+                    (paymentMethod === 'bank_transfer' && !selectedBank)
+                  }
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: ((paymentMethod === 'pos' && !selectedPOS) || (paymentMethod === 'bank_transfer' && !selectedBank)) ? '#9ca3af' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: ((paymentMethod === 'pos' && !selectedPOS) || (paymentMethod === 'bank_transfer' && !selectedBank)) ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Check size={18} /> Finalize Payment
+                </button>
+              )}
             </div>
           </div>
         </div>
