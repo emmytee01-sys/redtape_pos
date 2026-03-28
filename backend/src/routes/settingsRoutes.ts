@@ -5,21 +5,23 @@ import { authenticate, authorize } from '../middlewares/auth';
 const router = Router();
 
 router.use(authenticate);
-router.use(authorize('admin')); // Only admin can access settings
 
-router.get('/account-numbers', SettingsController.getAllAccountNumbers);
-router.post('/account-numbers', SettingsController.createAccountNumber);
-router.put('/account-numbers/:id', SettingsController.updateAccountNumber);
-router.delete('/account-numbers/:id', SettingsController.deleteAccountNumber);
+// Get routes are accessible by admin, accountant and manager
+router.get('/account-numbers', authorize('admin', 'accountant', 'manager'), SettingsController.getAllAccountNumbers);
+router.get('/pos-terminals', authorize('admin', 'accountant', 'manager'), SettingsController.getAllPOSTerminals);
+router.get('/', authorize('admin', 'accountant', 'manager'), SettingsController.getSettings);
 
-router.get('/pos-terminals', SettingsController.getAllPOSTerminals);
-router.post('/pos-terminals', SettingsController.createPOSTerminal);
-router.put('/pos-terminals/:id', SettingsController.updatePOSTerminal);
-router.delete('/pos-terminals/:id', SettingsController.deletePOSTerminal);
+// Modification routes are restricted to admin only
+router.post('/account-numbers', authorize('admin'), SettingsController.createAccountNumber);
+router.put('/account-numbers/:id', authorize('admin'), SettingsController.updateAccountNumber);
+router.delete('/account-numbers/:id', authorize('admin'), SettingsController.deleteAccountNumber);
 
-router.get('/', SettingsController.getSettings);
-router.put('/setting', SettingsController.updateSetting);
-router.post('/logo', upload.single('logo'), SettingsController.uploadLogo);
+router.post('/pos-terminals', authorize('admin'), SettingsController.createPOSTerminal);
+router.put('/pos-terminals/:id', authorize('admin'), SettingsController.updatePOSTerminal);
+router.delete('/pos-terminals/:id', authorize('admin'), SettingsController.deletePOSTerminal);
+
+router.put('/setting', authorize('admin'), SettingsController.updateSetting);
+router.post('/logo', authorize('admin'), upload.single('logo'), SettingsController.uploadLogo);
 
 export default router;
 

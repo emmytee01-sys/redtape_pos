@@ -18,7 +18,7 @@ const Payments = () => {
   const [paymentNotes, setPaymentNotes] = useState('');
 
   const user = authService.getCurrentUser();
-  const isAccountant = user?.role === 'accountant' || user?.role === 'admin';
+  const isAccountant = user?.role === 'accountant' || user?.role === 'admin' || user?.role === 'manager';
 
   useEffect(() => {
     loadData();

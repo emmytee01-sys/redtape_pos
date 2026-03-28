@@ -36,7 +36,7 @@ const Orders = () => {
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
   const isAccountant = user?.role === 'accountant';
   const isSalesRep = user?.role === 'sales_rep';
-  const isAccountantOrAdmin = user?.role === 'accountant' || user?.role === 'admin';
+  const isAccountantOrAdmin = user?.role === 'accountant' || user?.role === 'admin' || user?.role === 'manager';
 
   useEffect(() => {
     loadOrders();
