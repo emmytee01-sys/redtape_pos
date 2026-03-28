@@ -137,8 +137,7 @@ export class ReportController {
         SELECT 
           COUNT(id) as total_orders,
           SUM(total) as total_revenue,
-          SUM(subtotal) as subtotal,
-          SUM(tax) as total_tax
+          SUM(subtotal) as subtotal
         FROM orders 
         WHERE status = 'paid' AND DATE(created_at) = ${dateValue ? '?' : 'CURDATE()'}
       `;
@@ -176,7 +175,7 @@ export class ReportController {
 
       res.json({
         date: dateValue || new Date().toISOString().split('T')[0],
-        summary: (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0, total_tax: 0 },
+        summary: (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0 },
         payments: paymentsResult,
         top_products: topProductsResult
       });
@@ -191,7 +190,7 @@ export class ReportController {
       const dateValue = (date as string) || new Date().toISOString().split('T')[0];
 
       // Fetch data (reusing logic from getEndOfDayReport but without sending JSON)
-      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal, SUM(tax) as total_tax FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
+      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
       const paymentsQuery = `SELECT payment_method, COUNT(*) as count, SUM(amount) as total_amount FROM payments WHERE payment_status = 'confirmed' AND DATE(created_at) = ? GROUP BY payment_method`;
       const topProductsQuery = `SELECT p.product_name, SUM(oi.quantity) as quantity_sold, SUM(oi.subtotal) as revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status = 'paid' AND DATE(o.created_at) = ? GROUP BY p.id, p.product_name ORDER BY quantity_sold DESC LIMIT 20`;
 
@@ -199,7 +198,7 @@ export class ReportController {
       const [paymentsResult] = await pool.execute(paymentsQuery, [dateValue]);
       const [topProductsResult] = await pool.execute(topProductsQuery, [dateValue]);
 
-      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0, total_tax: 0 };
+      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0 };
       const payments = paymentsResult as any[];
       const topProducts = topProductsResult as any[];
 
@@ -221,7 +220,6 @@ export class ReportController {
       doc.fontSize(12);
       doc.text(`Total Orders: ${summary.total_orders || 0}`);
       doc.text(`Subtotal: ₦${Number(summary.subtotal || 0).toLocaleString()}`);
-      doc.text(`Total Tax: ₦${Number(summary.total_tax || 0).toLocaleString()}`);
       doc.fontSize(14).fillColor('#dc2626').font('Helvetica-Bold').text(`Total Revenue: ₦${Number(summary.total_revenue || 0).toLocaleString()}`);
       doc.fillColor('black').font('Helvetica');
       doc.moveDown();
@@ -263,7 +261,7 @@ export class ReportController {
       const dateValue = (date as string) || new Date().toISOString().split('T')[0];
 
       // Fetch data
-      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal, SUM(tax) as total_tax FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
+      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
       const paymentsQuery = `SELECT payment_method, COUNT(*) as count, SUM(amount) as total_amount FROM payments WHERE payment_status = 'confirmed' AND DATE(created_at) = ? GROUP BY payment_method`;
       const topProductsQuery = `SELECT p.product_name, SUM(oi.quantity) as quantity_sold, SUM(oi.subtotal) as revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status = 'paid' AND DATE(o.created_at) = ? GROUP BY p.id, p.product_name ORDER BY quantity_sold DESC`;
 
@@ -271,7 +269,7 @@ export class ReportController {
       const [paymentsResult] = await pool.execute(paymentsQuery, [dateValue]);
       const [topProductsResult] = await pool.execute(topProductsQuery, [dateValue]);
 
-      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0, total_tax: 0 };
+      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0 };
       const payments = paymentsResult as any[];
       const topProducts = topProductsResult as any[];
 
@@ -284,7 +282,6 @@ export class ReportController {
         ['Financial Summary'],
         ['Total Orders', summary.total_orders],
         ['Subtotal', Number(summary.subtotal)],
-        ['Total Tax', Number(summary.total_tax)],
         ['Total Revenue', Number(summary.total_revenue)],
       ];
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
@@ -325,7 +322,7 @@ export class ReportController {
       const dateValue = (date as string) || new Date().toISOString().split('T')[0];
 
       // Fetch data
-      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal, SUM(tax) as total_tax FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
+      const summaryQuery = `SELECT COUNT(id) as total_orders, SUM(total) as total_revenue, SUM(subtotal) as subtotal FROM orders WHERE status = 'paid' AND DATE(created_at) = ?`;
       const paymentsQuery = `SELECT payment_method, COUNT(*) as count, SUM(amount) as total_amount FROM payments WHERE payment_status = 'confirmed' AND DATE(created_at) = ? GROUP BY payment_method`;
       const topProductsQuery = `SELECT p.product_name, SUM(oi.quantity) as quantity_sold, SUM(oi.subtotal) as revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status = 'paid' AND DATE(o.created_at) = ? GROUP BY p.id, p.product_name ORDER BY quantity_sold DESC`;
 
@@ -333,7 +330,7 @@ export class ReportController {
       const [paymentsResult] = await pool.execute(paymentsQuery, [dateValue]);
       const [topProductsResult] = await pool.execute(topProductsQuery, [dateValue]);
 
-      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0, total_tax: 0 };
+      const summary = (summaryResult as any[])[0] || { total_orders: 0, total_revenue: 0, subtotal: 0 };
       const payments = paymentsResult as any[];
       const topProducts = topProductsResult as any[];
 
@@ -342,7 +339,6 @@ export class ReportController {
       csvContent += 'Financial Summary\n';
       csvContent += `Total Orders,${summary.total_orders}\n`;
       csvContent += `Subtotal,${Number(summary.subtotal)}\n`;
-      csvContent += `Total Tax,${Number(summary.total_tax)}\n`;
       csvContent += `Total Revenue,${Number(summary.total_revenue)}\n\n`;
 
       csvContent += 'Payment Breakdown\n';

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { OrderModel } from '../models/Order';
 import { ProductModel } from '../models/Product';
+import { PaymentModel } from '../models/Payment';
 import { AuthRequest } from '../middlewares/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { ReceiptService } from '../services/receiptService';
@@ -45,8 +46,8 @@ export class OrderController {
         });
       }
 
-      const tax = subtotal * 0.1; // 10% tax (you can make this configurable)
-      const total = subtotal + tax;
+      const tax = 0; // Tax removed
+      const total = subtotal;
 
       // Generate order number
       const orderNumber = `ORD-${Date.now()}-${uuidv4().substring(0, 8).toUpperCase()}`;
@@ -153,6 +154,14 @@ export class OrderController {
       }
 
       await OrderModel.updateStatus(parseInt(id), 'submitted');
+
+      // Create pending payment record
+      await PaymentModel.create({
+        order_id: order.id,
+        amount: order.total,
+        payment_status: 'pending' as any,
+      });
+
       const updatedOrder = await OrderModel.findById(parseInt(id));
       res.json(updatedOrder);
     } catch (error: any) {
@@ -236,8 +245,8 @@ export class OrderController {
           await ProductModel.updateStock(item.product_id, -item.quantity);
         }
 
-        tax = subtotal * 0.1;
-        total = subtotal + tax;
+        tax = 0;
+        total = subtotal;
       }
 
       // Update order details

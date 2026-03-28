@@ -130,7 +130,6 @@ export class ReceiptService {
     };
 
     drawTotalRow('Subtotal:', `₦${Number(order.subtotal).toLocaleString()}`);
-    drawTotalRow('Tax (10%):', `₦${Number(order.tax).toLocaleString()}`);
     currentY += 2;
     drawTotalRow('TOTAL:', `₦${Number(order.total).toLocaleString()}`, true);
 
@@ -294,7 +293,6 @@ export class ReceiptService {
     };
 
     drawTotalRow('Subtotal:', `₦${Number(order.subtotal).toLocaleString()}`);
-    drawTotalRow('Tax (10%):', `₦${Number(order.tax).toLocaleString()}`);
     currentY += 2;
     drawTotalRow('TOTAL:', `₦${Number(order.total).toLocaleString()}`, true);
 

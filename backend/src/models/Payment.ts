@@ -29,24 +29,26 @@ export interface PaymentWithDetails extends Payment {
 export class PaymentModel {
   static async create(paymentData: {
     order_id: number;
-    accountant_id: number;
+    accountant_id?: number | null;
     amount: number;
     payment_method?: 'cash' | 'pos' | 'bank_transfer' | 'other';
     pos_terminal_id?: number;
     bank_account_id?: number;
     notes?: string;
+    payment_status?: 'pending' | 'confirmed' | 'refunded';
   }): Promise<number> {
     const [result] = await pool.execute(
-      `INSERT INTO payments (order_id, accountant_id, amount, payment_method, pos_terminal_id, bank_account_id, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO payments (order_id, accountant_id, amount, payment_method, pos_terminal_id, bank_account_id, notes, payment_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         paymentData.order_id,
-        paymentData.accountant_id,
+        paymentData.accountant_id || null,
         paymentData.amount,
         paymentData.payment_method || 'cash',
         paymentData.pos_terminal_id || null,
         paymentData.bank_account_id || null,
         paymentData.notes || null,
+        paymentData.payment_status || 'pending',
       ]
     );
     return (result as any).insertId;
@@ -126,14 +128,35 @@ export class PaymentModel {
     return rows as PaymentWithDetails[];
   }
 
-  static async confirmPayment(id: number): Promise<boolean> {
+  static async confirmPayment(
+    id: number,
+    accountantId: number,
+    paymentMethod: 'cash' | 'pos' | 'bank_transfer' | 'other',
+    posTerminalId?: number | null,
+    bankAccountId?: number | null,
+    notes?: string
+  ): Promise<boolean> {
+    const updates: string[] = ["payment_status = 'confirmed'", 'confirmed_at = NOW()', 'accountant_id = ?', 'payment_method = ?'];
+    const params: any[] = [accountantId, paymentMethod];
+
+    if (posTerminalId !== undefined) {
+      updates.push('pos_terminal_id = ?');
+      params.push(posTerminalId);
+    }
+    if (bankAccountId !== undefined) {
+      updates.push('bank_account_id = ?');
+      params.push(bankAccountId);
+    }
+    if (notes !== undefined) {
+      updates.push('notes = ?');
+      params.push(notes);
+    }
+
+    params.push(id);
     await pool.execute(
-      `UPDATE payments 
-       SET payment_status = 'confirmed', confirmed_at = NOW() 
-       WHERE id = ?`,
-      [id]
+      `UPDATE payments SET ${updates.join(', ')} WHERE id = ?`,
+      params
     );
     return true;
   }
 }
-

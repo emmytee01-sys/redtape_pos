@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { paymentService, Payment } from '../services/paymentService';
 import { settingsService, AccountNumber, POSTerminal } from '../services/settingsService';
-import { orderService, Order } from '../services/orderService';
 import { authService } from '../services/authService';
 import { Check, Download, Printer } from 'lucide-react';
 

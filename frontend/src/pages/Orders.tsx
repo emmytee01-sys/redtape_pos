@@ -1350,10 +1350,6 @@ const Orders = () => {
                 <span>Subtotal:</span>
                 <span style={{ fontWeight: '500' }}>₦{Number(selectedOrder.subtotal).toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span>Tax:</span>
-                <span style={{ fontWeight: '500' }}>₦{Number(selectedOrder.tax).toFixed(2)}</span>
-              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: '700', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
                 <span>Total:</span>
                 <span>₦{Number(selectedOrder.total).toFixed(2)}</span>

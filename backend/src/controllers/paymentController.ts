@@ -49,6 +49,7 @@ export class PaymentController {
   static async confirmPayment(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const { payment_method, pos_terminal_id, bank_account_id, notes } = req.body;
       const payment = await PaymentModel.findById(parseInt(id));
 
       if (!payment) {
@@ -61,8 +62,17 @@ export class PaymentController {
         return;
       }
 
+      const method = payment_method || payment.payment_method || 'cash';
+
       // Confirm payment
-      await PaymentModel.confirmPayment(parseInt(id));
+      await PaymentModel.confirmPayment(
+        parseInt(id),
+        req.user!.id,
+        method as any,
+        pos_terminal_id,
+        bank_account_id,
+        notes
+      );
 
       // Update order status
       await OrderModel.updateStatus(payment.order_id, 'paid');
