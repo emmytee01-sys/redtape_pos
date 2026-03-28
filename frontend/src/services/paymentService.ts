@@ -35,9 +35,18 @@ export const paymentService = {
     return response.data;
   },
 
-  confirm: async (id: number): Promise<{ payment: Payment; receipt: Receipt }> => {
+  confirm: async (
+    id: number,
+    data?: {
+      payment_method?: string;
+      pos_terminal_id?: number;
+      bank_account_id?: number;
+      notes?: string;
+    }
+  ): Promise<{ payment: Payment; receipt: Receipt }> => {
     const response = await api.post<{ payment: Payment; receipt: Receipt }>(
-      `/payments/${id}/confirm`
+      `/payments/${id}/confirm`,
+      data
     );
     return response.data;
   },

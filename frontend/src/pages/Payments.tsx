@@ -7,10 +7,10 @@ import { Check, Download, Printer } from 'lucide-react';
 
 const Payments = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | 'bank_transfer' | 'other'>('cash');
   const [posTerminals, setPOSTerminals] = useState<POSTerminal[]>([]);
   const [bankAccounts, setBankAccounts] = useState<AccountNumber[]>([]);
@@ -28,15 +28,15 @@ const Payments = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const paymentsData = await paymentService.getAll();
+      const paymentsData = await paymentService.getAll({ payment_status: 'confirmed' });
       setPayments(paymentsData);
 
       if (isAccountant) {
         try {
-          const ordersData = await orderService.getAll({ status: 'submitted' });
-          setOrders(ordersData);
+          const pendingData = await paymentService.getAll({ payment_status: 'pending' });
+          setPendingPayments(pendingData);
         } catch (err) {
-          console.error('Failed to load orders:', err);
+          console.error('Failed to load pending payments:', err);
         }
 
         try {
@@ -48,7 +48,6 @@ const Payments = () => {
           setBankAccounts(accounts.filter(a => a.is_active));
         } catch (err) {
           console.error('Failed to load POS/Bank settings:', err);
-          // Don't block the rest of the page if these fail
         }
       }
     } catch (error) {
@@ -58,21 +57,20 @@ const Payments = () => {
     }
   };
 
-  const handleCreateAndConfirmPayment = async (order: Order) => {
+  const handleConfirmPayment = async () => {
+    if (!selectedPayment) return;
     try {
-      const payment = await paymentService.create({
-        order_id: order.id,
+      await paymentService.confirm(selectedPayment.id, {
         payment_method: paymentMethod,
         pos_terminal_id: paymentMethod === 'pos' ? parseInt(selectedPOS) : undefined,
         bank_account_id: paymentMethod === 'bank_transfer' ? parseInt(selectedBank) : undefined,
         notes: paymentNotes,
       });
 
-      await paymentService.confirm(payment.id);
       alert('Payment confirmed! Receipt generated.');
       await loadData();
       setShowPaymentModal(false);
-      setSelectedOrder(null);
+      setSelectedPayment(null);
       setPaymentMethod('cash');
       setSelectedPOS('');
       setSelectedBank('');
@@ -114,7 +112,7 @@ const Payments = () => {
         {isAccountant ? 'Payment Confirmation' : 'Payments'}
       </h1>
 
-      {isAccountant && orders.length > 0 && (
+      {isAccountant && pendingPayments.length > 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
             Pending Payment Confirmation
@@ -125,24 +123,22 @@ const Payments = () => {
                 <tr style={{ background: '#f9fafb', borderBottom: '2px solid var(--border)' }}>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Order #</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Customer</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Sales Rep</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Date</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Date Submitted</th>
                   <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Amount</th>
                   <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{order.order_number}</td>
-                    <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{order.customer_name || 'Walk-in Customer'}</td>
-                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>{order.sales_rep_name || 'N/A'}</td>
-                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>{new Date(order.created_at).toLocaleString()}</td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '700' }}>₦{Number(order.total).toFixed(2)}</td>
+                {pendingPayments.map((payment) => (
+                  <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{payment.order_number}</td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{payment.customer_name || 'Walk-in Customer'}</td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>{new Date(payment.created_at).toLocaleString()}</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '700' }}>₦{Number(payment.amount).toFixed(2)}</td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <button
                         onClick={() => {
-                          setSelectedOrder(order);
+                          setSelectedPayment(payment);
                           setShowPaymentModal(true);
                         }}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', background: '#dc2626', color: 'white', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}
@@ -159,7 +155,7 @@ const Payments = () => {
         </div>
       )}
 
-      {isAccountant && orders.length === 0 && (
+      {isAccountant && pendingPayments.length === 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
             Pending Payment Confirmation
@@ -248,21 +244,21 @@ const Payments = () => {
         </div>
       </div>
 
-      {isAccountant && orders.length === 0 && payments.length === 0 && (
+      {isAccountant && pendingPayments.length === 0 && payments.length === 0 && (
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
           No pending orders or confirmed payments found
         </div>
       )}
 
       {/* Payment Confirmation Modal */}
-      {showPaymentModal && selectedOrder && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { setShowPaymentModal(false); setSelectedOrder(null); }}>
+      {showPaymentModal && selectedPayment && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { setShowPaymentModal(false); setSelectedPayment(null); }}>
           <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '0.75rem', maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Confirm Payment</h2>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Order: {selectedOrder.order_number}</p>
-              <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#dc2626' }}>Amount: ₦{Number(selectedOrder.total).toFixed(2)}</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Order: {selectedPayment.order_number}</p>
+              <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#dc2626' }}>Amount: ₦{Number(selectedPayment.amount).toFixed(2)}</p>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
@@ -281,7 +277,7 @@ const Payments = () => {
                 <select value={selectedPOS} onChange={(e) => setSelectedPOS(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', background: 'white' }}>
                   <option value="">Select POS</option>
                   {posTerminals.map(pos => (
-                    <option key={pos.id} value={pos.id}>{pos.bank_name} ({pos.terminal_id})</option>
+                    <option key={pos.id} value={String(pos.id)}>{pos.bank_name} ({pos.terminal_id})</option>
                   ))}
                 </select>
               </div>
@@ -293,7 +289,7 @@ const Payments = () => {
                 <select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '1rem', background: 'white' }}>
                   <option value="">Select Account</option>
                   {bankAccounts.map(acc => (
-                    <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_number}</option>
+                    <option key={acc.id} value={String(acc.id)}>{acc.bank_name} - {acc.account_number}</option>
                   ))}
                 </select>
               </div>
@@ -305,9 +301,9 @@ const Payments = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowPaymentModal(false); setSelectedOrder(null); }} style={{ padding: '0.75rem 1.5rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>Cancel</button>
+              <button onClick={() => { setShowPaymentModal(false); setSelectedPayment(null); }} style={{ padding: '0.75rem 1.5rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>Cancel</button>
               <button
-                onClick={() => handleCreateAndConfirmPayment(selectedOrder)}
+                onClick={handleConfirmPayment}
                 disabled={
                   (paymentMethod === 'pos' && !selectedPOS) ||
                   (paymentMethod === 'bank_transfer' && !selectedBank)
