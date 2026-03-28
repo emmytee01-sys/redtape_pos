@@ -65,14 +65,14 @@ export class PaymentController {
       const method = payment_method || payment.payment_method || 'cash';
 
       // Confirm payment
-      await PaymentModel.confirmPayment(
-        parseInt(id),
-        req.user!.id,
-        method as any,
-        pos_terminal_id,
-        bank_account_id,
+      await PaymentModel.confirmPayment({
+        id: parseInt(id),
+        accountantId: req.user!.id,
+        paymentMethod: method as any,
+        posTerminalId: pos_terminal_id,
+        bankAccountId: bank_account_id,
         notes
-      );
+      });
 
       // Update order status
       await OrderModel.updateStatus(payment.order_id, 'paid');

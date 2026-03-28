@@ -128,14 +128,15 @@ export class PaymentModel {
     return rows as PaymentWithDetails[];
   }
 
-  static async confirmPayment(
-    id: number,
-    accountantId: number,
-    paymentMethod: 'cash' | 'pos' | 'bank_transfer' | 'other',
-    posTerminalId?: number | null,
-    bankAccountId?: number | null,
-    notes?: string
-  ): Promise<boolean> {
+  static async confirmPayment(data: {
+    id: number;
+    accountantId: number;
+    paymentMethod: 'cash' | 'pos' | 'bank_transfer' | 'other';
+    posTerminalId?: number | null;
+    bankAccountId?: number | null;
+    notes?: string;
+  }): Promise<boolean> {
+    const { id, accountantId, paymentMethod, posTerminalId, bankAccountId, notes } = data;
     const updates: string[] = ["payment_status = 'confirmed'", 'confirmed_at = NOW()', 'accountant_id = ?', 'payment_method = ?'];
     const params: any[] = [accountantId, paymentMethod];
 
