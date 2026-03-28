@@ -77,13 +77,16 @@ export class UserController {
   static async updateUser(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { username, email, full_name, role, is_active } = req.body;
+      const { username, email, full_name, role, is_active, password } = req.body;
 
       const updates: any = {};
       if (username !== undefined) updates.username = username;
       if (email !== undefined) updates.email = email;
       if (full_name !== undefined) updates.full_name = full_name;
       if (is_active !== undefined) updates.is_active = is_active;
+      if (password !== undefined && password !== '') {
+        updates.password_hash = await AuthService.hashPassword(password);
+      }
       if (role !== undefined) {
         const roleId = await UserModel.getRoleId(role);
         if (!roleId) {

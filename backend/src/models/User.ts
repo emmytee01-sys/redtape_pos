@@ -86,6 +86,7 @@ export class UserModel {
     updates: Partial<{
       username: string;
       email: string;
+      password_hash: string;
       full_name: string;
       role_id: number;
       is_active: boolean;

@@ -15,12 +15,14 @@ const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     full_name: '',
     role: 'sales_rep',
+    is_active: true,
   });
 
   useEffect(() => {
@@ -38,20 +40,44 @@ const Users = () => {
     }
   };
 
-  const handleCreateUser = async () => {
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      username: user.username,
+      email: user.email,
+      password: '', // Password remains empty unless user wants to change it
+      full_name: user.full_name,
+      role: user.role,
+      is_active: user.is_active,
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async () => {
     try {
-      await api.post('/users', formData);
+      if (editingUser) {
+        // Prepare update data
+        const updateData: any = { ...formData };
+        if (updateData.password === '') delete updateData.password;
+        
+        await api.put(`/users/${editingUser.id}`, updateData);
+      } else {
+        await api.post('/users', formData);
+      }
+      
       setShowModal(false);
+      setEditingUser(null);
       setFormData({
         username: '',
         email: '',
         password: '',
         full_name: '',
         role: 'sales_rep',
+        is_active: true,
       });
       loadUsers();
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to create user');
+      alert(error.response?.data?.error || `Failed to ${editingUser ? 'update' : 'create'} user`);
     }
   };
 
@@ -64,7 +90,18 @@ const Users = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: '700' }}>Users</h1>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingUser(null);
+            setFormData({
+              username: '',
+              email: '',
+              password: '',
+              full_name: '',
+              role: 'sales_rep',
+              is_active: true,
+            });
+            setShowModal(true);
+          }}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -100,6 +137,7 @@ const Users = () => {
               <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Email</th>
               <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Role</th>
               <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Status</th>
+              <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -134,6 +172,22 @@ const Users = () => {
                     {user.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
+                <td style={{ padding: '1rem' }}>
+                  <button
+                    onClick={() => handleEdit(user)}
+                    style={{
+                      color: 'var(--primary)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                    }}
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -160,10 +214,14 @@ const Users = () => {
               borderRadius: '0.75rem',
               maxWidth: '500px',
               width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Create User</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
+              {editingUser ? 'Edit User' : 'Create User'}
+            </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
@@ -174,7 +232,6 @@ const Users = () => {
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -191,7 +248,6 @@ const Users = () => {
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  required
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -208,7 +264,6 @@ const Users = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -219,13 +274,13 @@ const Users = () => {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
-                  Password
+                  Password {editingUser && '(Leave blank to keep current)'}
                 </label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
+                  placeholder={editingUser ? '••••••••' : ''}
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -254,6 +309,20 @@ const Users = () => {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              
+              {editingUser && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  />
+                  <label htmlFor="is_active" style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                    User is Active
+                  </label>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
@@ -270,7 +339,7 @@ const Users = () => {
                 Cancel
               </button>
               <button
-                onClick={handleCreateUser}
+                onClick={handleSubmit}
                 style={{
                   padding: '0.75rem 1.5rem',
                   background: 'var(--primary)',
@@ -280,7 +349,7 @@ const Users = () => {
                   cursor: 'pointer',
                 }}
               >
-                Create User
+                {editingUser ? 'Save Changes' : 'Create User'}
               </button>
             </div>
           </div>
