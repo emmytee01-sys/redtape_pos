@@ -4,7 +4,7 @@ import { productService, Product } from '../services/productService';
 import { authService } from '../services/authService';
 import { settingsService, AccountNumber, POSTerminal } from '../services/settingsService';
 import { paymentService } from '../services/paymentService';
-import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye, Printer, AlertCircle as AlertIcon } from 'lucide-react';
+import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye, Printer } from 'lucide-react';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
