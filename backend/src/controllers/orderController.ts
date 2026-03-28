@@ -9,7 +9,7 @@ import { ReceiptService } from '../services/receiptService';
 export class OrderController {
   static async createOrder(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { customer_name, customer_email, customer_phone, items, notes } = req.body;
+      const { customer_name, customer_email, customer_phone, customer_id, items, notes } = req.body;
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400).json({ error: 'Order must contain at least one item' });
@@ -58,6 +58,7 @@ export class OrderController {
         customer_name,
         customer_email,
         customer_phone,
+        customer_id,
         sales_rep_id: req.user!.id,
         subtotal,
         tax,

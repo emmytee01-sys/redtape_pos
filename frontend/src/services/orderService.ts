@@ -16,6 +16,7 @@ export interface Order {
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
+  customer_id: number | null;
   sales_rep_id: number;
   status: 'pending' | 'submitted' | 'paid' | 'cancelled';
   subtotal: number;
@@ -32,6 +33,7 @@ export const orderService = {
     customer_name?: string;
     customer_email?: string;
     customer_phone?: string;
+    customer_id?: number;
     items: OrderItem[];
     notes?: string;
   }): Promise<Order> => {

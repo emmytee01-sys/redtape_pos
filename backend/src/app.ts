@@ -10,6 +10,7 @@ import reportRoutes from './routes/reportRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import vendorRoutes from './routes/vendorRoutes';
 import discountRequestRoutes from './routes/discountRequestRoutes';
+import customerRoutes from './routes/customerRoutes';
 import path from 'path';
 
 dotenv.config();
@@ -53,6 +54,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/discount-requests', discountRequestRoutes);
+app.use('/api/customers', customerRoutes);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

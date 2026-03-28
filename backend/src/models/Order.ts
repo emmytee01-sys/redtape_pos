@@ -6,6 +6,7 @@ export interface Order {
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
+  customer_id: number | null;
   sales_rep_id: number;
   status: 'pending' | 'submitted' | 'paid' | 'cancelled';
   subtotal: number;
@@ -31,6 +32,8 @@ export interface OrderItem {
 export interface OrderWithItems extends Order {
   items: OrderItem[];
   sales_rep_name?: string;
+  customer_full_name?: string;
+  customer_phone_number?: string;
 }
 
 export class OrderModel {
@@ -39,6 +42,7 @@ export class OrderModel {
     customer_name?: string;
     customer_email?: string;
     customer_phone?: string;
+    customer_id?: number;
     sales_rep_id: number;
     subtotal: number;
     tax: number;
@@ -46,13 +50,14 @@ export class OrderModel {
     notes?: string;
   }): Promise<number> {
     const [result] = await pool.execute(
-      `INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, sales_rep_id, subtotal, tax, total, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, customer_id, sales_rep_id, subtotal, tax, total, notes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         orderData.order_number,
         orderData.customer_name || null,
         orderData.customer_email || null,
         orderData.customer_phone || null,
+        orderData.customer_id || null,
         orderData.sales_rep_id,
         orderData.subtotal,
         orderData.tax || 0,
@@ -86,9 +91,10 @@ export class OrderModel {
 
   static async findById(id: number): Promise<OrderWithItems | null> {
     const [orders] = await pool.execute(
-      `SELECT o.*, u.full_name as sales_rep_name 
+      `SELECT o.*, u.full_name as sales_rep_name, c.full_name as customer_full_name, c.phone_number as customer_phone_number 
        FROM orders o 
        LEFT JOIN users u ON o.sales_rep_id = u.id 
+       LEFT JOIN customers c ON o.customer_id = c.id
        WHERE o.id = ?`,
       [id]
     );
@@ -111,9 +117,10 @@ export class OrderModel {
 
   static async findByOrderNumber(orderNumber: string): Promise<OrderWithItems | null> {
     const [orders] = await pool.execute(
-      `SELECT o.*, u.full_name as sales_rep_name 
+      `SELECT o.*, u.full_name as sales_rep_name, c.full_name as customer_full_name, c.phone_number as customer_phone_number 
        FROM orders o 
        LEFT JOIN users u ON o.sales_rep_id = u.id 
+       LEFT JOIN customers c ON o.customer_id = c.id
        WHERE o.order_number = ?`,
       [orderNumber]
     );
@@ -140,9 +147,10 @@ export class OrderModel {
     startDate?: Date;
     endDate?: Date;
   }): Promise<OrderWithItems[]> {
-    let query = `SELECT o.*, u.full_name as sales_rep_name 
+    let query = `SELECT o.*, u.full_name as sales_rep_name, c.full_name as customer_full_name, c.phone_number as customer_phone_number 
                  FROM orders o 
                  LEFT JOIN users u ON o.sales_rep_id = u.id 
+                 LEFT JOIN customers c ON o.customer_id = c.id 
                  WHERE 1=1`;
     const params: any[] = [];
 

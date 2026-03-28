@@ -206,9 +206,12 @@ const Products = () => {
     return matchesSearch && matchesCategory && matchesStatus && matchesStock;
   });
 
-  const handleCreateOrder = async (cart: any[]) => {
+  const handleCreateOrder = async (cart: any[], customerId?: number, customerData?: any) => {
     try {
       await orderService.create({
+        customer_id: customerId,
+        customer_name: customerData?.full_name,
+        customer_phone: customerData?.phone_number,
         items: cart.map((item) => ({
           product_id: item.product_id,
           quantity: item.quantity,
