@@ -69,10 +69,16 @@ export class ProductController {
       const { sku, product_name, category, description, price, quantity, min_stock_level } =
         req.body;
 
-      if (!sku || !product_name || !category || !price || quantity === undefined) {
+      if (!sku || !product_name || !category || price === undefined || quantity === undefined) {
         res.status(400).json({
           error: 'SKU, product_name, category, price, and quantity are required',
         });
+        return;
+      }
+
+      // Only admin can add/set price
+      if (req.user!.role !== 'admin') {
+        res.status(403).json({ error: 'Only administrators can add or set product prices' });
         return;
       }
 
@@ -108,7 +114,14 @@ export class ProductController {
       if (req.body.product_name !== undefined) updates.product_name = req.body.product_name;
       if (req.body.category !== undefined) updates.category = req.body.category;
       if (req.body.description !== undefined) updates.description = req.body.description;
-      if (req.body.price !== undefined) updates.price = parseFloat(req.body.price);
+      if (req.body.price !== undefined) {
+        // Only admin can edit price
+        if (req.user!.role !== 'admin') {
+          res.status(403).json({ error: 'Only administrators can edit product prices' });
+          return;
+        }
+        updates.price = parseFloat(req.body.price);
+      }
       if (req.body.quantity !== undefined) updates.quantity = parseInt(req.body.quantity);
       if (req.body.min_stock_level !== undefined)
         updates.min_stock_level = parseInt(req.body.min_stock_level);

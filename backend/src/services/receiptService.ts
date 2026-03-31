@@ -151,8 +151,8 @@ export class ReceiptService {
       totalItemsCount += item.quantity;
       doc.font(font(true)).fontSize(8).text(itemName.toUpperCase(), margin, itemY, { width: 140 });
       const mainTextHeight = doc.y - itemY;
-      doc.font(font()).fontSize(7).text(`\u20A6${Number(item.unit_price).toLocaleString()}`, margin, doc.y);
-      doc.font(font(true)).fontSize(8).text(`\u20A6${Number(item.subtotal).toLocaleString()}`, margin + 140, itemY, { width: 55, align: 'right' });
+      doc.font(font()).fontSize(7).text(`₦${Number(item.unit_price).toLocaleString()}`, margin, doc.y);
+      doc.font(font(true)).fontSize(8).text(`₦${Number(item.subtotal).toLocaleString()}`, margin + 140, itemY, { width: 55, align: 'right' });
       currentY = Math.max(doc.y, itemY + mainTextHeight + 10) + 5;
     });
 
@@ -169,9 +169,9 @@ export class ReceiptService {
       currentY = doc.y + 5;
     };
 
-    drawTotalRow('Subtotal:', `\u20A6${Number(order.subtotal).toLocaleString()}`);
+    drawTotalRow('Subtotal:', `₦${Number(order.subtotal).toLocaleString()}`);
     currentY += 2;
-    drawTotalRow('TOTAL:', `\u20A6${Number(order.total).toLocaleString()}`, true);
+    drawTotalRow('TOTAL:', `₦${Number(order.total).toLocaleString()}`, true);
 
     currentY += 10;
     currentY = drawDivider(currentY);
@@ -193,7 +193,7 @@ export class ReceiptService {
 
     doc.text(`Method: ${methodLabel}`, margin, currentY);
     if (methodValue) doc.text(methodValue, margin, doc.y + 2);
-    doc.text(`Paid: \u20A6${Number(payment.amount).toLocaleString()}`, margin, doc.y + 2);
+    doc.text(`Paid: ₦${Number(payment.amount).toLocaleString()}`, margin, doc.y + 2);
     doc.text(`Cashier: ${payment.accountant_name || 'System'}`, margin, doc.y + 2);
     doc.text(`Sales Rep: ${order.sales_rep_name || 'N/A'}`, margin, doc.y + 2);
     currentY = doc.y + 10;
@@ -303,8 +303,8 @@ export class ReceiptService {
       const startY = currentY;
       doc.font(font(true)).text((item.product_name || `SKU: ${item.product_sku}`).toUpperCase(), margin, startY, { width: 140 });
       const nH = doc.y - startY;
-      doc.font(font()).fontSize(7).text(`${item.quantity} x \u20A6${Number(item.unit_price).toLocaleString()}`, margin, doc.y);
-      doc.font(font(true)).fontSize(8).text(`\u20A6${Number(item.subtotal).toLocaleString()}`, margin + 140, startY, { width: 55, align: 'right' });
+      doc.font(font()).fontSize(7).text(`${item.quantity} x ₦${Number(item.unit_price).toLocaleString()}`, margin, doc.y);
+      doc.font(font(true)).fontSize(8).text(`₦${Number(item.subtotal).toLocaleString()}`, margin + 140, startY, { width: 55, align: 'right' });
       currentY = Math.max(doc.y, startY + nH + 10) + 5;
     });
 
@@ -319,9 +319,9 @@ export class ReceiptService {
       currentY = doc.y + 5;
     };
 
-    drawTotalRow('Subtotal:', `\u20A6${Number(order.subtotal).toLocaleString()}`);
+    drawTotalRow('Subtotal:', `₦${Number(order.subtotal).toLocaleString()}`);
     currentY += 2;
-    drawTotalRow('TOTAL:', `\u20A6${Number(order.total).toLocaleString()}`, true);
+    drawTotalRow('TOTAL:', `₦${Number(order.total).toLocaleString()}`, true);
     
     currentY += 10;
     currentY = drawDivider(currentY);

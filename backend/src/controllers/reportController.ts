@@ -223,8 +223,8 @@ export class ReportController {
       doc.moveDown(0.5);
       doc.font(font()).fontSize(12);
       doc.text(`Total Orders: ${summary.total_orders || 0}`);
-      doc.text(`Subtotal: \u20A6${Number(summary.subtotal || 0).toLocaleString()}`);
-      doc.fontSize(14).fillColor('#dc2626').font(font(true)).text(`Total Revenue: \u20A6${Number(summary.total_revenue || 0).toLocaleString()}`);
+      doc.text(`Subtotal: ₦${Number(summary.subtotal || 0).toLocaleString()}`);
+      doc.fontSize(14).fillColor('#dc2626').font(font(true)).text(`Total Revenue: ₦${Number(summary.total_revenue || 0).toLocaleString()}`);
       doc.fillColor('black').font(font());
       doc.moveDown();
 
@@ -236,7 +236,7 @@ export class ReportController {
       } else {
         payments.forEach(p => {
           const method = p.payment_method.toUpperCase();
-          doc.font(font()).fontSize(12).text(`${method}: ${p.count} transitions - \u20A6${Number(p.total_amount).toLocaleString()}`);
+          doc.font(font()).fontSize(12).text(`${method}: ${p.count} transitions - ₦${Number(p.total_amount).toLocaleString()}`);
         });
       }
       doc.moveDown();
@@ -248,7 +248,7 @@ export class ReportController {
         doc.font(font()).fontSize(12).text('No products sold.');
       } else {
         topProducts.forEach((p, index) => {
-          doc.font(font()).fontSize(11).text(`${index + 1}. ${p.product_name} - Qty: ${p.quantity_sold}, Revenue: \u20A6${Number(p.revenue).toLocaleString()}`);
+          doc.font(font()).fontSize(11).text(`${index + 1}. ${p.product_name} - Qty: ${p.quantity_sold}, Revenue: ₦${Number(p.revenue).toLocaleString()}`);
         });
       }
 

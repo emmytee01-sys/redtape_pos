@@ -335,6 +335,7 @@ const Products = () => {
         setSelectedVendors={setSelectedVendorsForProduct}
         vendorPrices={vendorPrices}
         setVendorPrices={setVendorPrices}
+        canEditPrice={user?.role === 'admin'}
       />
 
       <ProductDetailsModal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} product={selectedProduct} />

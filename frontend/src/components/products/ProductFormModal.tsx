@@ -14,6 +14,7 @@ interface ProductFormModalProps {
     setSelectedVendors: (ids: number[]) => void;
     vendorPrices: Record<number, string>;
     setVendorPrices: (prices: Record<number, string>) => void;
+    canEditPrice: boolean;
 }
 
 const ProductFormModal = ({
@@ -28,7 +29,8 @@ const ProductFormModal = ({
     selectedVendors,
     setSelectedVendors,
     vendorPrices,
-    setVendorPrices
+    setVendorPrices,
+    canEditPrice
 }: ProductFormModalProps) => {
     if (!show) return null;
 
@@ -58,7 +60,21 @@ const ProductFormModal = ({
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Price (₦) *</label>
-                        <input type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem' }} />
+                        <input 
+                            type="number" 
+                            disabled={!canEditPrice} 
+                            placeholder={!canEditPrice ? "Admin only" : "0.00"}
+                            value={formData.price} 
+                            onChange={e => setFormData({ ...formData, price: e.target.value })} 
+                            style={{ 
+                                width: '100%', 
+                                padding: '0.75rem', 
+                                border: '1px solid var(--border)', 
+                                borderRadius: '0.5rem',
+                                background: !canEditPrice ? 'var(--background)' : 'white',
+                                cursor: !canEditPrice ? 'not-allowed' : 'text'
+                            }} 
+                        />
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Initial Qty</label>
