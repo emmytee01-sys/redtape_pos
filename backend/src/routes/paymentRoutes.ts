@@ -10,7 +10,7 @@ router.get('/', authorize('accountant', 'admin', 'manager'), PaymentController.g
 router.get('/:id', authorize('accountant', 'admin', 'manager'), PaymentController.getPayment);
 router.post('/', authorize('accountant', 'admin'), PaymentController.createPayment);
 router.post('/:id/confirm', authorize('accountant', 'admin', 'manager'), PaymentController.confirmPayment);
-router.get('/receipt/:payment_id', authorize('accountant', 'admin', 'sales_rep'), PaymentController.getReceipt);
+router.get('/receipt/:payment_id', authorize('accountant', 'admin', 'sales_rep', 'manager'), PaymentController.getReceipt);
 
 export default router;
 

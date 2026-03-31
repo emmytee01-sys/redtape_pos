@@ -155,7 +155,25 @@ export class PaymentController {
   static async getReceipt(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { payment_id } = req.params;
-      const receipt = await ReceiptModel.findByPaymentId(parseInt(payment_id));
+      let receipt = await ReceiptModel.findByPaymentId(parseInt(payment_id));
+
+      if (!receipt) {
+        // Fallback: Check if payment is confirmed. If so, generate receipt now.
+        const payment = await PaymentModel.findById(parseInt(payment_id));
+        if (payment && payment.payment_status === 'confirmed') {
+          const order = await OrderModel.findById(payment.order_id);
+          if (order) {
+            const receiptPath = await ReceiptService.generateReceipt(order, payment);
+            const receiptNumber = `RCP-${Date.now()}-${uuidv4().substring(0, 8).toUpperCase()}`;
+            await ReceiptModel.create({
+              payment_id: parseInt(payment_id),
+              receipt_number: receiptNumber,
+              file_path: receiptPath,
+            });
+            receipt = await ReceiptModel.findByPaymentId(parseInt(payment_id));
+          }
+        }
+      }
 
       if (!receipt) {
         res.status(404).json({ error: 'Receipt not found' });
