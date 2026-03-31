@@ -7,19 +7,47 @@ import { SettingsModel } from '../models/Settings';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ReceiptService {
-  private static FONT_REGULAR = path.join(__dirname, '../assets/fonts/Roboto-Regular.ttf');
-  private static FONT_BOLD = path.join(__dirname, '../assets/fonts/Roboto-Bold.ttf');
+  private static getFontPath(bold = false) {
+    const filename = bold ? 'Roboto-Bold.ttf' : 'Roboto-Regular.ttf';
+    // Check multiple possible locations for the font files
+    const possiblePaths = [
+      path.join(process.cwd(), 'src/assets/fonts', filename),
+      path.join(process.cwd(), 'dist/assets/fonts', filename),
+      path.join(__dirname, '../assets/fonts', filename),
+      path.join(__dirname, '../../src/assets/fonts', filename)
+    ];
 
-  private static getFont(bold = false) {
-    if (bold) {
-      return fs.existsSync(this.FONT_BOLD) ? 'RobotoBold' : 'Helvetica-Bold';
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) return p;
     }
-    return fs.existsSync(this.FONT_REGULAR) ? 'RobotoRegular' : 'Helvetica';
+    return null;
   }
 
-  private static registerCustomFonts(doc: PDFKit.PDFDocument) {
-    if (fs.existsSync(this.FONT_REGULAR)) doc.registerFont('RobotoRegular', this.FONT_REGULAR);
-    if (fs.existsSync(this.FONT_BOLD)) doc.registerFont('RobotoBold', this.FONT_BOLD);
+  public static getFont(bold = false) {
+    const path = this.getFontPath(bold);
+    if (bold) {
+      return path ? 'RobotoBold' : 'Helvetica-Bold';
+    }
+    return path ? 'RobotoRegular' : 'Helvetica';
+  }
+
+  public static registerCustomFonts(doc: PDFKit.PDFDocument) {
+    const regularPath = this.getFontPath(false);
+    const boldPath = this.getFontPath(true);
+    
+    if (regularPath) {
+      doc.registerFont('RobotoRegular', regularPath);
+      console.log('Registered font RobotoRegular from:', regularPath);
+    } else {
+      console.warn('Regular font Roboto-Regular.ttf not found at any location');
+    }
+
+    if (boldPath) {
+      doc.registerFont('RobotoBold', boldPath);
+      console.log('Registered font RobotoBold from:', boldPath);
+    } else {
+      console.warn('Bold font Roboto-Bold.ttf not found at any location');
+    }
   }
 
   static async generateReceipt(

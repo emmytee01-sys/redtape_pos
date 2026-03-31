@@ -2,6 +2,7 @@ import { Response } from 'express';
 import pool from '../utils/database';
 import { AuthRequest } from '../middlewares/auth';
 import PDFDocument from 'pdfkit';
+import { ReceiptService } from '../services/receiptService';
 import * as XLSX from 'xlsx';
 
 export class ReportController {
@@ -203,48 +204,51 @@ export class ReportController {
       const topProducts = topProductsResult as any[];
 
       const doc = new PDFDocument({ margin: 50 });
+      ReceiptService.registerCustomFonts(doc);
+      const font = (bold = false) => ReceiptService.getFont(bold);
+
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=EndOfDay_Report_${dateValue}.pdf`);
       doc.pipe(res);
 
       // Header
-      doc.fontSize(20).text('End of Day Report', { align: 'center' });
-      doc.fontSize(12).text(`Date: ${dateValue}`, { align: 'center' });
+      doc.font(font(true)).fontSize(20).text('End of Day Report', { align: 'center' });
+      doc.font(font()).fontSize(12).text(`Date: ${dateValue}`, { align: 'center' });
       doc.moveDown();
       doc.strokeColor('#cccccc').moveTo(50, doc.y).lineTo(550, doc.y).stroke();
       doc.moveDown();
 
       // Summary Section
-      doc.fontSize(16).text('Financial Summary', { underline: true });
+      doc.font(font(true)).fontSize(16).text('Financial Summary', { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(12);
+      doc.font(font()).fontSize(12);
       doc.text(`Total Orders: ${summary.total_orders || 0}`);
-      doc.text(`Subtotal: ₦${Number(summary.subtotal || 0).toLocaleString()}`);
-      doc.fontSize(14).fillColor('#dc2626').font('Helvetica-Bold').text(`Total Revenue: ₦${Number(summary.total_revenue || 0).toLocaleString()}`);
-      doc.fillColor('black').font('Helvetica');
+      doc.text(`Subtotal: \u20A6${Number(summary.subtotal || 0).toLocaleString()}`);
+      doc.fontSize(14).fillColor('#dc2626').font(font(true)).text(`Total Revenue: \u20A6${Number(summary.total_revenue || 0).toLocaleString()}`);
+      doc.fillColor('black').font(font());
       doc.moveDown();
 
       // Payments Section
-      doc.fontSize(16).text('Payment Breakdown', { underline: true });
+      doc.font(font(true)).fontSize(16).text('Payment Breakdown', { underline: true });
       doc.moveDown(0.5);
       if (payments.length === 0) {
-        doc.fontSize(12).text('No payments recorded.');
+        doc.font(font()).fontSize(12).text('No payments recorded.');
       } else {
         payments.forEach(p => {
           const method = p.payment_method.toUpperCase();
-          doc.fontSize(12).text(`${method}: ${p.count} transitions - ₦${Number(p.total_amount).toLocaleString()}`);
+          doc.font(font()).fontSize(12).text(`${method}: ${p.count} transitions - \u20A6${Number(p.total_amount).toLocaleString()}`);
         });
       }
       doc.moveDown();
 
       // Top Products Section
-      doc.fontSize(16).text('Top Products Sold', { underline: true });
+      doc.font(font(true)).fontSize(16).text('Top Products Sold', { underline: true });
       doc.moveDown(0.5);
       if (topProducts.length === 0) {
-        doc.fontSize(12).text('No products sold.');
+        doc.font(font()).fontSize(12).text('No products sold.');
       } else {
         topProducts.forEach((p, index) => {
-          doc.fontSize(11).text(`${index + 1}. ${p.product_name} - Qty: ${p.quantity_sold}, Revenue: ₦${Number(p.revenue).toLocaleString()}`);
+          doc.font(font()).fontSize(11).text(`${index + 1}. ${p.product_name} - Qty: ${p.quantity_sold}, Revenue: \u20A6${Number(p.revenue).toLocaleString()}`);
         });
       }
 

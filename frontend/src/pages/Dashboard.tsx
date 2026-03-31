@@ -4,7 +4,7 @@ import { orderService, Order } from '../services/orderService';
 import { discountRequestService } from '../services/discountRequestService';
 import { authService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, ShoppingCart, TrendingUp, AlertTriangle, Package, Percent } from 'lucide-react';
+import { Naira, ShoppingCart, TrendingUp, AlertTriangle, Package, Percent } from 'lucide-react';
 
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -86,7 +86,7 @@ const Dashboard = () => {
       {
         title: 'Total Sales Amount',
         value: `₦${Number(stats?.total_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        icon: DollarSign,
+        icon: Naira,
         color: '#dc2626',
         isHighlight: true,
         description: 'Total revenue from all paid orders'
@@ -118,7 +118,7 @@ const Dashboard = () => {
       {
         title: 'Your Total Sales',
         value: `₦${Number(stats?.total_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        icon: DollarSign,
+        icon: Naira,
         color: 'var(--primary)',
       },
       {

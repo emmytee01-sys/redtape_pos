@@ -4,7 +4,7 @@ import { productService, Product } from '../services/productService';
 import { authService } from '../services/authService';
 import { settingsService, AccountNumber, POSTerminal } from '../services/settingsService';
 import { paymentService } from '../services/paymentService';
-import { Plus, Check, ShoppingCart, Clock, DollarSign, Filter, X, Edit, Trash2, Eye, Printer } from 'lucide-react';
+import { Plus, Check, ShoppingCart, Clock, Naira, Filter, X, Edit, Trash2, Eye, Printer } from 'lucide-react';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -444,7 +444,7 @@ const Orders = () => {
             <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
               Paid
             </span>
-            <DollarSign size={20} color="#10b981" />
+            <Naira size={20} color="#10b981" />
           </div>
           <div style={{ fontSize: '2rem', fontWeight: '700', color: '#10b981' }}>{stats.paid}</div>
           {stats.totalRevenue > 0 && (
@@ -785,7 +785,7 @@ const Orders = () => {
                             }}
                             title="Confirm Payment"
                           >
-                            <DollarSign size={14} />
+                            <Naira size={14} />
                             Confirm Payment
                           </button>
                         )}
@@ -1467,7 +1467,7 @@ const Orders = () => {
             {showPaymentOptions && (
               <div style={{ padding: '1.5rem', background: '#fef2f2', borderRadius: '0.75rem', border: '1px solid #fee2e2', marginBottom: '1.5rem' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                   <DollarSign size={18} /> Payment Processing
+                   <Naira size={18} /> Payment Processing
                 </h4>
                 
                 <div style={{ marginBottom: '1rem' }}>

@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "tsc && (cp -r src/assets dist/ 2>/dev/null || xcopy /E /I src\\assets dist\\assets /Y 2>nul || true)",
     "start": "node dist/server.js",
     "seed": "ts-node src/utils/seed.ts",
     "import-excel": "ts-node src/utils/importExcel.ts"
