@@ -192,7 +192,7 @@ const SalesPickItems = ({
                                         </div>
                                     </div>
                                     <div style={{ fontWeight: '800', color: '#dc2626', fontSize: '1.25rem' }}>
-                                        \u20A6{Number(product.price).toLocaleString()}
+                                        ₦{Number(product.price).toLocaleString()}
                                     </div>
                                     <div
                                         style={{
@@ -325,7 +325,7 @@ const SalesPickItems = ({
                                                     <Plus size={14} />
                                                 </button>
                                             </div>
-                                            <div style={{ fontWeight: '700', color: '#dc2626' }}>\u20A6{(Number(item.product.price) * item.quantity).toLocaleString()}</div>
+                                            <div style={{ fontWeight: '700', color: '#dc2626' }}>₦{(Number(item.product.price) * item.quantity).toLocaleString()}</div>
                                         </div>
                                     </div>
                                 ))}
@@ -334,11 +334,11 @@ const SalesPickItems = ({
                             <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                                     <span>Subtotal</span>
-                                    <span>\u20A6{calculateCartTotal().toLocaleString()}</span>
+                                    <span>₦{calculateCartTotal().toLocaleString()}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border)' }}>
                                     <span style={{ fontSize: '1.125rem', fontWeight: '700' }}>Total</span>
-                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>\u20A6{calculateCartTotal().toLocaleString()}</span>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>₦{calculateCartTotal().toLocaleString()}</span>
                                 </div>
                             </div>
 
